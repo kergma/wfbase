@@ -16,7 +16,9 @@ use Catalyst::Runtime '5.70';
 use parent qw/Catalyst/;
 use Catalyst qw/-Debug
                 ConfigLoader
-                Static::Simple/;
+                Static::Simple
+		Authentication
+		/;
 our $VERSION = '0.01';
 
 # Configure the application. 
@@ -29,6 +31,17 @@ our $VERSION = '0.01';
 # local deployment.
 
 __PACKAGE__->config( name => 'web' );
+
+__PACKAGE__->config->{'Plugin::Authentication'} = 
+{ 
+	realms =>
+	{
+		default =>
+		{
+			class => 'MailprocData'
+		}
+	}
+};
 
 # Start the application
 __PACKAGE__->setup();
