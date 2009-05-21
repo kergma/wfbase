@@ -18,6 +18,9 @@ use Catalyst qw/-Debug
                 ConfigLoader
                 Static::Simple
 		Authentication
+		Session
+		Session::Store::FastMmap
+		Session::State::Cookie
 		/;
 our $VERSION = '0.01';
 
@@ -34,11 +37,20 @@ __PACKAGE__->config( name => 'web' );
 
 __PACKAGE__->config->{'Plugin::Authentication'} = 
 { 
+	use_session => 1,
 	realms =>
 	{
 		default =>
 		{
-			class => 'MailprocData'
+			credential =>
+			{
+				class => 'Mailproc'
+			},
+			store =>
+			{
+				class => 'Null'
+			}
+			
 		}
 	}
 };

@@ -3,6 +3,7 @@ package web::Controller::auth;
 use strict;
 use warnings;
 use base 'Catalyst::Controller::FormBuilder';
+use Data::Dumper;
 
 =head1 NAME
 
@@ -21,7 +22,19 @@ Catalyst Controller.
 
 =cut
 
-sub index :Path :Args(0) :Form {
+sub index :Path :Args(0)
+{
+	my ( $self, $c ) = @_;
+
+	$c->response->body("user exists '".$c->user_exists()."' user '".$c->user."'<br>".Dumper($c->user));
+}
+
+=head1 login
+Форма входа в систему
+=cut
+
+sub login :Local :Form
+{
 	my ( $self, $c ) = @_;
 	my $form=$self->formbuilder;
 
@@ -34,7 +47,9 @@ sub index :Path :Args(0) :Form {
             if ( $form->validate ) {
 		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
 		{
-		    $body.="authenticated in default<br>";
+			$c->response->redirect($c->uri_for($c->controller('auth')->action_for('index')));
+			return;
+		    $body.="authentication succeeded in default<br><pre>".Dumper($c);
 		}
 		else
 		{
@@ -49,7 +64,16 @@ sub index :Path :Args(0) :Form {
 
     $c->response->body($body);
 }
+=head1 login
+Форма входа в систему
+=cut
 
+sub logout :Local
+{
+	my ($self, $c) = @_;
+	$c->logout;
+	$c->response->redirect($c->uri_for($c->controller('auth')->action_for('index')));
+}
 
 =head1 AUTHOR
 
