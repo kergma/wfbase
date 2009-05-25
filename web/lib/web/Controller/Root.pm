@@ -62,6 +62,7 @@ sub auto :Private
 	{
 		$c->log->debug('***Root::auto User not found, forwarding to /login');
 		$c->response->redirect($c->uri_for('/auth/login'));
+		$c->flash->{redirect_after_login} = '' . $c->req->uri;
 		return 0;
 	};
     
