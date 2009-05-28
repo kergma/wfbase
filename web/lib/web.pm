@@ -14,7 +14,7 @@ use Catalyst::Runtime '5.70';
 #                 directory
 
 use parent qw/Catalyst/;
-use Catalyst qw/-Debug
+use Catalyst qw/
                 ConfigLoader
                 Static::Simple
 		Authentication
