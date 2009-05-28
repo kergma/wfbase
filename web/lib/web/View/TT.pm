@@ -3,7 +3,11 @@ package web::View::TT;
 use strict;
 use base 'Catalyst::View::TT';
 
-__PACKAGE__->config(TEMPLATE_EXTENSION => '.tt');
+__PACKAGE__->config(
+	TEMPLATE_EXTENSION => '.tt',
+	INCLUDE_PATH => [web->path_to('root')],
+	WRAPPER => 'wrapper.tt'
+);
 
 =head1 NAME
 
