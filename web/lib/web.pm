@@ -18,6 +18,7 @@ use Catalyst qw/
                 ConfigLoader
                 Static::Simple
 		Authentication
+		Authorization::Roles
 		Session
 		Session::Store::FastMmap
 		Session::State::Cookie
