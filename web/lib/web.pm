@@ -44,11 +44,13 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 		{
 			credential =>
 			{
-				class => 'Mailproc'
+				class => 'Password',
+				password_field=>'password',
+				password_type=>'clear'
 			},
 			store =>
 			{
-				class => 'Null'
+				class => 'Mailproc'
 			}
 			
 		}
