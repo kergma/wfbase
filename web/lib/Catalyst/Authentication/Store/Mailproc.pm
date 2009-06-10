@@ -31,11 +31,9 @@ sub from_session
 	return $user;
 }
 
-use Data::Dumper;
 sub find_user
 {
 	my ( $self, $authinfo, $c ) = @_;
-	$c->log->debug(Dumper($authinfo));
 
 	my $dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1}) or return 'Error connecting database' ;
 	my $sth=$dbh->prepare("select * from data where v2='$authinfo->{username}' and r like 'пароль%'");
@@ -72,7 +70,6 @@ where d1.v2='$authinfo->{username}' and d1.r like 'пароль%'
 	$r and push @{$authinfo->{roles}},'отделение';
 
 	$dbh->disconnect;
-	$c->log->debug(Dumper($authinfo));
 	return bless $authinfo, 'Catalyst::Authentication::User::Hash';
 }
 
