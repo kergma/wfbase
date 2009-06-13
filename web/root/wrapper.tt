@@ -13,11 +13,12 @@
 	(<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)
 </div><!-- end auth -->
 <div id="menu">
-Выберите нужный вам запрос:
+Выберите нужное вам действие:
 <ul>
-	<li><a href="[% c.uri_for('/sender/acclog') %]">Принятые пакеты</a></li>
-	<li><a href="[% c.uri_for('/sender/status') %]">Статусы по адресу</a></li>
-	<li><a href="[% c.uri_for('/sender/history') %]">История пакетов по адресу</a></li>
+	<li><a href="[% c.uri_for('/help') %]">Прочитать инструкцию</a></li>
+	<li><a href="[% c.uri_for('/sender/acclog') %]">Просмотр принятых пакетов</a></li>
+	<li><a href="[% c.uri_for('/sender/status') %]">Просмотр статусов адреса</a></li>
+	<li><a href="[% c.uri_for('/sender/history') %]">Просмотр истории адреса</a></li>
 [% IF c.check_user_roles('проверяющий') %]
 	<li><a href="[% c.uri_for('/test/log') %]">Просмотр журнала (тест)</a></li>
 	<li><a href="[% c.uri_for('/test/assigned') %]">Назначенные пакеты</a></li>
