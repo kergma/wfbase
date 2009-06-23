@@ -10,7 +10,7 @@
 <body>
 <div id="outer">
 <div id="auth">
-	[% c.user.username %][% IF c.user.full_name %], [% c.user.full_name %][% END %][% IF c.user.roles %], [% c.user.roles %][% END %]
+	[% c.user.username %][% IF c.user.full_name %], [% c.user.full_name %][% END %][% IF c.user.roles %], [% c.user.roles.join(', ') %][% END %]
 	(<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)
 </div><!-- end auth -->
 <div id="menu">
