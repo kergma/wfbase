@@ -35,6 +35,7 @@
 <div id="bodyblock">
 
 <div id="content">
+    <span class="error">[% error_msg %]</span>
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
 </div><!-- end content -->
