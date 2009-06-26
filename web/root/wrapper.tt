@@ -22,7 +22,8 @@
 	<li><a href="[% c.uri_for('/sender/status') %]">Просмотр статусов адреса</a></li>
 	<li><a href="[% c.uri_for('/sender/history') %]">Просмотр истории адреса</a></li>
 [% IF c.check_user_roles('проверяющий') %]
-	<li><a href="[% c.uri_for('/test/log') %]">Просмотр журнала (тест)</a></li>
+	<li><a href="[% c.uri_for('/log/browse') %]">Просмотр журнала</a></li>
+	<li><a href="[% c.uri_for('/log/add') %]">Добавление записи</a></li>
 	<li><a href="[% c.uri_for('/test/assigned') %]">Назначенные пакеты</a></li>
 [% END %]
 </ul>
