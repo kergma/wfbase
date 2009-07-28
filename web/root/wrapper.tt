@@ -17,7 +17,7 @@
 <div id="menu">
 Выберите нужное вам действие:
 <ul>
-	<li><a href="[% c.uri_for('/help') %]">Прочитать инструкцию</a></li>
+	<li><a href="[% c.uri_for('/doc/html/инструкция') %]">Прочитать инструкцию</a></li>
 	<li><a href="[% c.uri_for('/sender/acclog') %]">Просмотр принятых пакетов</a></li>
 	<li><a href="[% c.uri_for('/sender/status') %]">Просмотр статусов</a></li>
 	<li><a href="[% c.uri_for('/sender/statstatus') %]">Статистика статусов</a></li>
