@@ -35,25 +35,41 @@
 </div><!-- end auth -->
 
 <div id="menu">
+
 <ul>
-<li>Выберите нужное вам действие
+<li>Просмотр
 <ul>
-	<li><a href="[% c.uri_for('/doc/html/инструкция') %]">Прочитать инструкцию</a></li>
-	<li><a href="[% c.uri_for('/sender/acclog') %]">Просмотр принятых пакетов</a></li>
-	<li><a href="[% c.uri_for('/sender/status') %]">Просмотр статусов</a></li>
-	<li><a href="[% c.uri_for('/sender/statstatus') %]">Статистика статусов</a></li>
-	<li><a href="[% c.uri_for('/sender/history') %]">Просмотр истории</a></li>
-[% IF c.check_user_roles('проверяющий') %]
+	<li><a href="[% c.uri_for('/sender/acclog') %]">Принятые пакеты</a></li>
+	<li><a href="[% c.uri_for('/sender/history') %]">История объектов</a></li>
+	<li><a href="[% c.uri_for('/sender/status') %]">Статусы объектов</a></li>
+	<li><a href="[% c.uri_for('/sender/statstatus') %]">Статистика статусов объектов</a></li>
+</ul>
+</li>
+</ul>
+
+[% IF c.check_any_user_role('проверяющий','контролирующий') %]
+<ul>
+<li>Обработка
+<ul>
 	<li><a href="[% c.uri_for('/log/browse') %]">Просмотр журнала</a></li>
 	<li><a href="[% c.uri_for('/log/add') %]">Добавление записи</a></li>
 	<li><a href="[% c.uri_for('/test/assigned') %]">Назначенные пакеты</a></li>
+</ul>
+</li>
+</ul>
 [% END %]
+
+<ul>
+<li>Документация
+<ul>
+	<li><a href="[% c.uri_for('/doc/html/инструкция') %]">Инструкция</a></li>
 [% IF c.check_user_roles('контролирующий') %]
-	<li><a href="[% c.uri_for('/log/browse') %]">Просмотр журнала</a></li>
+	<li><a href="[% c.uri_for('/doc/html/рукадмин') %]">Руководство администратора</a></li>
 [% END %]
 </ul>
 </li>
 </ul>
+
 </div><!-- end menu -->
 
 <div id="header">
