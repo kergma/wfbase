@@ -1,7 +1,10 @@
 /* http://www.seoconsultants.com/css/menus/tutorial/ */
+#menu, #menu li {
+background: #ddd;
+}
+
 #menu {
 width: 100%;
-/*background: #eee;*/
 float: left;
 }
 #menu ul {
@@ -10,33 +13,44 @@ margin: 0;
 padding: 0;
 width: 12em;
 float: left;
+/*
+border-width: 1px;
+border-style: none solid solid none;
+border-color: #ccc #888 #555 #bbb;
+*/
 }
 
+#menu ul ul {
+border-width: 1px;
+border-style: solid;
+border-color: #ddd;
+}
 #menu li {
 /*font: bold 11px/16px arial, helvetica, sans-serif;*/
 display: block;
+/*
 border-width: 1px;
 border-style: solid;
 border-color: #ccc #888 #555 #bbb;
+*/
 margin: 0;
 padding: 2px 3px;
 }
 
-#menu h2 {
-/*color: #fff;*/
-/*background: #000;*/
-}
-
 #menu li {
-/*color: #000;*/
-/*background: #efefef;*/
-background: white;
-/*text-decoration: none;*/
+/*
+color: #000;
+background: #efefef;
+text-decoration: none;
+*/
 }
 
-#menu a:hover {
-color: #a00;
-background: #fff;
+#menu li:hover {
+/*
+color: white;
+*/
+background: white;
+display: block;
 }
 
 #menu li {position: relative;}

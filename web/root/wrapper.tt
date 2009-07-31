@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
 -->
 
-<!--<link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" /> -->
+<link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" />
 
 <!--[if IE]>
 <style type="text/css" media="screen">
@@ -22,7 +22,7 @@
 	font-size:100%; /* to enable text resizing in IE */
 	}
 	#menu ul li{float:left;width:100%;}
-	#menu h2, #menu a{height:1%;}
+	#menu ul ul {top:100%;left:0;}
 </style>
 <![endif]-->
 
