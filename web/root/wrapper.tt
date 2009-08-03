@@ -18,7 +18,7 @@
 	#menu{float:none;} /* This is required for IE to avoid positioning bug when placing content first in source. */
 	/* IE Menu CSS */
 	/* csshover.htc file version: V1.21.041022 - Available for download from: http://www.xs4all.nl/~peterned/csshover.html */
-	body{behavior:url(/css/csshover3.htc);
+	body{behavior:url(/css/csshover3a.htc);
 	font-size:100%; /* to enable text resizing in IE */
 	}
 	#menu ul li{float:left;width:100%;}
