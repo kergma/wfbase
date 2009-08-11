@@ -40,6 +40,7 @@ sub find_user
 	$sth->execute($authinfo->{username}); 
 	my $r=$sth->fetchrow_hashref;
 	$sth->finish();
+	$r or return undef;
 	$r and $authinfo->{password}=$r->{v1};
 
 	$sth=$dbh->prepare("select d2.v2 as full_name from data d1 join data d2 on d1.r like 'пароль%' and d2.r like '%сущности' and d2.v1=d1.v2 where d1.v2=?");
