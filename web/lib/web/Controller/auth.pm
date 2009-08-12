@@ -40,6 +40,7 @@ sub login :Local :Form
 
 	$form->field(name => 'username', label=>'Имя входа');
 	$form->field(name => 'password', label=>'Пароль', type=>'password');
+	$form->submit('Вход');
 	$form->method('post');
 
 	my $body=$form->render();
@@ -54,7 +55,7 @@ sub login :Local :Form
 		}
 		else
 		{
-		    $body.="authentication failed in default<br>";
+		    $body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
 		}
             }
             else {
