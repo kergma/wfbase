@@ -60,6 +60,17 @@
 </ul>
 [% END %]
 
+[% IF c.check_any_user_role('диспетчер','контролирующий','разрабочик') %]
+<ul>
+<li>Управление
+<ul>
+	<li><a href="[% c.uri_for('/export/status') %]">Передача пакетов</a></li>
+	<li><a href="[% c.uri_for('/export/history') %]">История передач</a></li>
+</ul>
+</li>
+</ul>
+[% END %]
+
 <ul>
 <li>Документация
 <ul>
