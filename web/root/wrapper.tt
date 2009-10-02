@@ -60,12 +60,15 @@
 </ul>
 [% END %]
 
-[% IF c.check_any_user_role('диспетчер','контролирующий','разрабочик') %]
+[% IF c.check_any_user_role('диспетчер','контролирующий','разрабочик','бригадир') %]
 <ul>
 <li>Управление
 <ul>
+[% IF c.check_any_user_role('диспетчер','контролирующий','разрабочик') %]
 	<li><a href="[% c.uri_for('/export/status') %]">Передача пакетов</a></li>
 	<li><a href="[% c.uri_for('/export/history') %]">История передач</a></li>
+[% END %]
+	<li><a href="[% c.uri_for('/dispatch/queue') %]">Очередь обработки</a></li>
 </ul>
 </li>
 </ul>
