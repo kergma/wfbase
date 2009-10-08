@@ -5,6 +5,8 @@ use warnings;
 use base 'Catalyst::Controller::FormBuilder';
 use Data::Dumper;
 
+__PACKAGE__->config( 'Controller::FormBuilder' => {form_path => File::Spec->catfile( web->path_to('root'))});
+
 =head1 NAME
 
 web::Controller::auth - Catalyst Controller
