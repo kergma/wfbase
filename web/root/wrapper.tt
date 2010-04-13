@@ -34,7 +34,7 @@
 <div id="menu">
 
 <div id="auth" style="float:right">
-	<div title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %]">[% c.user.username %] (<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)</div>
+	<div title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.otd %]">[% c.user.username %] (<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)</div>
 </div>
 
 <ul>

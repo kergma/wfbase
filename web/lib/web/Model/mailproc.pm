@@ -91,6 +91,18 @@ where d1.v2=? and d1.r like 'пароль%'
 	};
 	$sth->finish();
 
+	$data{otd}='x';
+
+	my $roles="'".join("', '",@{$data{roles}})."'";
+	my $otds=$dbh->selectcol_arrayref(qq/
+select v1 from data where r='отделение сотрудника' and v2=?
+union
+select v1 from data where r='отделение роли' and v2 in ($roles)
+union
+select oti from orders group by oti having oti = ? 
+/,undef, $data{full_name},$data{username});
+	$otds and @$otds and $data{otd}=join("|",@$otds);
+
 	return \%data;
 }
 
