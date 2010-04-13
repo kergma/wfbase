@@ -57,4 +57,41 @@ sub get_otd_list
 	return array_ref($self,"select oti from orders where oti is not null group by oti order by oti");
 }
 
+sub authinfo_password
+{
+	my ($self,$authinfo)=@_;
+	$self->connect() or return undef;
+	my $r=$dbh->selectrow_hashref("select * from data where v2=? and r like 'пароль%'",undef,$authinfo->{username});
+	$r or return undef;
+	return $r->{v1};
+}
+
+sub authinfo_data
+{
+	my ($self,$authinfo)=@_;
+	$self->connect() or return undef;
+	my %data=%$authinfo;
+
+	my $r=$dbh->selectrow_hashref("select d1.v1 as password, d2.v2 as full_name from data d1 join data d2 on d1.r like 'пароль%' and d2.r like '%сущности' and d2.v1=d1.v2 where d1.v2=?",undef,$authinfo->{username});
+
+	%data=(%data,%$r) if $r;
+
+	my $sth=$dbh->prepare(qq/
+select d3.v1 as description
+from data d1
+join data d2 on d2.v1=d1.v2 and d2.r like '%сущности'
+join data d3 on d3.v2=d2.v2 and d3.r like 'описание сущности'
+where d1.v2=? and d1.r like 'пароль%'
+/
+);
+	$sth->execute($authinfo->{username}); 
+	while (my $r=$sth->fetchrow_hashref)
+	{
+		push @{$data{roles}}, split / /,$r->{description};
+	};
+	$sth->finish();
+
+	return \%data;
+}
+
 1;
