@@ -93,7 +93,8 @@ where d1.v2=? and d1.r like 'пароль%'
 
 	$data{otd}='x';
 
-	my $roles="'".join("', '",@{$data{roles}})."'";
+	my $roles="'norole'";
+	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
 	my $otds=$dbh->selectcol_arrayref(qq/
 select v1 from data where r='отделение сотрудника' and v2=?
 union
