@@ -27,6 +27,18 @@ it under the same terms as Perl itself.
 =cut
 
 my $dbh;
+my $cc;
+
+sub ACCEPT_CONTEXT
+{
+	my ($self,$c,@args)=@_;
+
+	$c->log->debug("ACCEPT_CONTEXT");
+	$cc=$c;
+	return $self;
+	use Data::Dumper;
+	return Dumper($c);
+}
 
 sub connect
 {
@@ -55,6 +67,14 @@ sub get_otd_list
 	my ($self)=@_;
 	$self->connect() or return undef;
 	return array_ref($self,"select oti from orders where oti is not null group by oti order by oti");
+}
+
+sub test
+{
+	my ($self,$c)=@_;
+	use Data::Dumper;
+
+	return Dumper($cc);
 }
 
 sub authinfo_password
@@ -105,6 +125,15 @@ select oti from orders group by oti having oti = ?
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
 	return \%data;
+}
+
+sub read_orders
+{
+	my ($self,$authinfo)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	return 'read_orders';
 }
 
 1;
