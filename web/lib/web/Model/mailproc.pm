@@ -136,4 +136,40 @@ sub read_orders
 	return 'read_orders';
 }
 
+sub read_order_data
+{
+	my ($self,$id)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my $r=$dbh->selectrow_hashref("select * from orders where id=? and oti ~ ?",undef,$id,$cc->user->{otd});
+	return undef unless $r;
+	my $data=$r;
+	$r=$dbh->selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
+	$data->{object}=$r;
+
+	my $sth=$dbh->prepare("select * from packets where order_id=? order by id desc");
+	$sth->execute($id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$data->{packets}},$r;
+	};
+	$sth->finish;
+
+	my $sth=$dbh->prepare(qq/
+select *
+from log
+where order_id=?
+or packet_id in (select id from packets where order_id=?)
+or object_id=(select object_id from orders where id=?)
+order by id desc/);
+	$sth->execute($id,$id,$id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$data->{events}},$r;
+	};
+	$sth->finish;
+	return $data;
+}
+
 1;
