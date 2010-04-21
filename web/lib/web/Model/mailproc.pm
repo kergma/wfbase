@@ -66,7 +66,7 @@ sub get_otd_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	return array_ref($self,"select oti from orders where oti is not null group by oti order by oti");
+	return array_ref($self,"select otd from orders where otd is not null group by otd order by otd");
 }
 
 sub test
@@ -120,7 +120,7 @@ select v1 from data where r='отделение сотрудника' and v2=?
 union
 select v1 from data where r='отделение роли' and v2 in ($roles)
 union
-select oti from orders group by oti having oti = ? 
+select otd from orders group by otd having otd = ? 
 /,undef, $data{full_name},$data{username});
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
@@ -142,7 +142,7 @@ sub read_order_data
 	defined $cc or return undef;
 	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref("select * from orders where id=? and oti ~ ?",undef,$id,$cc->user->{otd});
+	my $r=$dbh->selectrow_hashref("select * from orders where id=? and otd ~ ?",undef,$id,$cc->user->{otd});
 	return undef unless $r;
 	my $data=$r;
 	$r=$dbh->selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
