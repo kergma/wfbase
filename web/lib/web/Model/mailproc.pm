@@ -33,11 +33,8 @@ sub ACCEPT_CONTEXT
 {
 	my ($self,$c,@args)=@_;
 
-	$c->log->debug("ACCEPT_CONTEXT");
 	$cc=$c;
 	return $self;
-	use Data::Dumper;
-	return Dumper($c);
 }
 
 sub connect
@@ -170,6 +167,29 @@ order by id desc/);
 	};
 	$sth->finish;
 	return $data;
+}
+
+sub read_table
+{
+	my $self=shift;
+	my $query=shift;
+	my @values=@_;
+
+	$self->connect() or return undef;
+
+	my $sth=$dbh->prepare($query);
+	$sth->execute(@values);
+
+	my %result=(query=>$query,values=>[@values],header=>[@{$sth->{NAME}}],rows=>[]);
+
+	while(my $r=$sth->fetchrow_arrayref)
+	{
+		my @a=@$r;
+		push @{$result{rows}},\@a;
+	};
+	$sth->finish;
+
+	return \%result;
 }
 
 1;
