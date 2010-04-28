@@ -153,7 +153,7 @@ sub read_order_data
 	};
 	$sth->finish;
 
-	my $sth=$dbh->prepare(qq/
+	$sth=$dbh->prepare(qq/
 select *
 from log
 where order_id=?
@@ -190,6 +190,40 @@ sub read_table
 	$sth->finish;
 
 	return \%result;
+}
+
+sub search_orders
+{
+	my ($self,$filter,$limit)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %where;
+	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"year = ?"}=$filter->{year} if $filter->{year};
+	$where{"ordno = ?"}=$filter->{ordno} if $filter->{ordno};
+	$where{"objno = ?"}=$filter->{objno} if $filter->{objno};
+	$where{"exists (select 1 from log where order_id=o.id and date=? and event='принят')"}=$filter->{accepted} if $filter->{accepted};
+	$where{"exists (select 1 from log where order_id=o.id and date=? and event='оплата')"}=$filter->{paid} if $filter->{paid};
+	$where{"exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(?))"}=$filter->{address} if $filter->{address};
+	$where{"exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(?))"}=$filter->{invent_number} if $filter->{invent_number};
+
+	$limit+0 or undef $limit;
+	$limit and $limit="limit $limit";
+
+	return read_table($self,qq{
+select 
+o.id,o.otd,o.year,o.ordno,o.objno,
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплата' order by id desc limit 1) as paid,
+(select address from objects where id=o.object_id) as address,
+(select invent_number from objects where id=o.object_id) as invent_number
+from orders o
+where }
+.join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
+);
+
 }
 
 1;
