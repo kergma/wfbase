@@ -212,7 +212,7 @@ sub search_orders
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	return read_table($self,qq{
+	my $result=read_table($self,qq{
 select 
 o.id,o.otd,o.year,o.ordno,o.objno,
 (select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
@@ -223,6 +223,9 @@ from orders o
 where }
 .join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
 );
+	
+	$result->{header}=['Заказ','Отделение','Год','Номер','Объект','Принят','Оплачен','Адрес','Инв. номер'];
+	return $result;
 
 }
 
