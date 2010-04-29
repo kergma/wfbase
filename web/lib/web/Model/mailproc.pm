@@ -193,7 +193,12 @@ sub read_object_data
 	return undef unless $r;
 	my $data=$r;
 
-	my $sth=$dbh->prepare("select * from orders where object_id=? order by id desc");
+	my $sth=$dbh->prepare(qq{
+select o.*,
+(select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where event='оплата' and order_id=o.id order by id desc limit 1) as paid
+from orders o where object_id=? order by id desc
+});
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
