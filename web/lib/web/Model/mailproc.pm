@@ -183,6 +183,48 @@ order by id desc/);
 	return $data;
 }
 
+sub read_object_data
+{
+	my ($self,$id)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my $r=$dbh->selectrow_hashref("select * from objects where id=? and otd ~ ?",undef,$id,$cc->user->{otd});
+	return undef unless $r;
+	my $data=$r;
+
+	my $sth=$dbh->prepare("select * from orders where object_id=? order by id desc");
+	$sth->execute($id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$data->{orders}},$r;
+	};
+	$sth->finish;
+
+	$sth=$dbh->prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
+	$sth->execute($id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$data->{packets}},$r;
+	};
+	$sth->finish;
+
+	$sth=$dbh->prepare(qq/
+select *
+from log
+where order_id in (select id from orders where object_id=?)
+or packet_id in (select id from packets where order_id in (select id from orders where object_id=?))
+or object_id=?
+order by id desc/);
+	$sth->execute($id,$id,$id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$data->{events}},$r;
+	};
+	$sth->finish;
+	return $data;
+}
+
 sub read_table
 {
 	my $self=shift;
