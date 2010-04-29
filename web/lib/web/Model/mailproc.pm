@@ -66,6 +66,20 @@ sub get_otd_list
 	return array_ref($self,"select otd from orders where otd is not null group by otd order by otd");
 }
 
+sub get_cd_list
+{
+	my ($self)=@_;
+	$self->connect() or return undef;
+	return array_ref($self,"select cadastral_district from objects where cadastral_district is not null group by cadastral_district order by cadastral_district");
+}
+
+sub get_objsource_list
+{
+	my ($self)=@_;
+	$self->connect() or return undef;
+	return array_ref($self,"select source from objects where source is not null group by source order by source");
+}
+
 sub test
 {
 	my ($self,$c)=@_;
@@ -225,6 +239,38 @@ where }
 );
 	
 	$result->{header}=['Заказ','Отделение','Год','Номер','Объект','Принят','Оплачен','Адрес','Инв. номер'];
+	return $result;
+
+}
+
+sub search_objects
+{
+	my ($self,$filter,$limit)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %where;
+	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
+	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
+	$where{"lower(o.name) ~ lower(?)"}=$filter->{name} if $filter->{name};
+	$where{"lower(o.invent_number) ~ lower(?)"}=$filter->{invent_number} if $filter->{invent_number};
+	$where{"lower(o.cadastral_number) ~ lower(?)"}=$filter->{cadastral_number} if $filter->{cadastral_number};
+	$where{"o.source = ?"}=$filter->{source} if $filter->{source};
+
+	$limit+0 or undef $limit;
+	$limit and $limit="limit $limit";
+
+	my $result=read_table($self,qq{
+select 
+id, otd, cadastral_district, address, name, invent_number, cadastral_number, source
+from objects o
+where }
+.join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
+);
+	
+	$result->{header}=['Объект','Отделение','Кадастровый р-н','Адрес','Наименование','Инв. номер','Кадастровый номер','Источник'];
 	return $result;
 
 }
