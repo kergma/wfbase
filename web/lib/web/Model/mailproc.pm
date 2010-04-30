@@ -191,8 +191,11 @@ sub read_object_data
 
 	my $r=$dbh->selectrow_hashref("select * from objects where id=? and otd ~ ?",undef,$id,$cc->user->{otd});
 	return undef unless $r;
-	my $data=$r;
 
+	my %data;
+	$data{object}=$r;
+
+	my %orders;
 	my $sth=$dbh->prepare(qq{
 select o.*,
 (select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
@@ -202,32 +205,40 @@ from orders o where object_id=? order by id desc
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$data->{orders}},$r;
+		push @{$orders{elements}},$r;
 	};
 	$sth->finish;
+	$data{orders}=\%orders;
 
+	my %packets;
 	$sth=$dbh->prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$data->{packets}},$r;
+		push @{$packets{elements}},$r;
 	};
 	$sth->finish;
+	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select *
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,
+case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
+coalesce(packet_id,object_id,order_id) as kindid
 from log
 where order_id in (select id from orders where object_id=?)
 or packet_id in (select id from packets where order_id in (select id from orders where object_id=?))
 or object_id=?
 order by id desc/);
 	$sth->execute($id,$id,$id);
+	my %events;
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$data->{events}},$r;
+		$r->{hilight}=1 if $r->{packet_id}==$data{object}->{id};
+		push @{$events{elements}},$r;
 	};
 	$sth->finish;
-	return $data;
+	$data{events}=\%events;
+	return \%data;
 }
 
 sub read_packet_data
