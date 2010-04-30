@@ -256,16 +256,13 @@ select p.*,
 from packets p where id=?}
 ,undef,$id);
 	return undef unless $packet;
-	$packet->{title}="Пакет";
-	push @{$data{elements}},$packet;
+	$data{packet}=$packet;
 
 	my $order=$dbh->selectrow_hashref("select * from orders where id=?",undef,$packet->{order_id});
-	$order->{title}="Заказ";
-	push @{$data{elements}},$order;
+	$data{order}=$order;
 
 	my $object=$dbh->selectrow_hashref("select * from objects where id=?",undef,$order->{object_id});
-	$object->{title}="Объект";
-	push @{$data{elements}},$object;
+	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,
@@ -284,8 +281,7 @@ order by id desc/);
 		push @{$events{elements}},$r;
 	};
 	$sth->finish;
-	$events{title}=sprintf "События (%d)",scalar(@{$events{elements}});
-	push @{$data{elements}},\%events;
+	$data{events}=\%events;
 	return \%data;
 }
 sub read_table
