@@ -230,6 +230,53 @@ order by id desc/);
 	return $data;
 }
 
+sub read_packet_data
+{
+	my ($self,$id)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %data;
+	my $packet=$dbh->selectrow_hashref(qq{
+select p.*,
+(select who from log where packet_id=p.id order by id desc limit 1) as who,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id limit 1) as accepted,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as status
+from packets p where id=?}
+,undef,$id);
+	return undef unless $packet;
+	$packet->{title}="Пакет";
+	push @{$data{elements}},$packet;
+
+	my $order=$dbh->selectrow_hashref("select * from orders where id=?",undef,$packet->{order_id});
+	$order->{title}="Заказ";
+	push @{$data{elements}},$order;
+
+	my $object=$dbh->selectrow_hashref("select * from objects where id=?",undef,$order->{object_id});
+	$object->{title}="Объект";
+	push @{$data{elements}},$object;
+
+	my $sth=$dbh->prepare(qq/
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,
+case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
+coalesce(packet_id,object_id,order_id) as kindid
+from log
+where order_id = ?
+or packet_id in (select id from packets where order_id = ?)
+or object_id=?
+order by id desc/);
+	$sth->execute($order->{id},$order->{id},$object->{id});
+	my %events;
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		$r->{hilight}=1 if $r->{packet_id}==$packet->{id};
+		push @{$events{elements}},$r;
+	};
+	$sth->finish;
+	$events{title}=sprintf "События (%d)",scalar(@{$events{elements}});
+	push @{$data{elements}},\%events;
+	return \%data;
+}
 sub read_table
 {
 	my $self=shift;
