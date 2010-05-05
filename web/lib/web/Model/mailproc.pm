@@ -190,9 +190,7 @@ from orders o where id=? and otd ~ ?
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,order_id,
-case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
-coalesce(packet_id,object_id,order_id) as kindid
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,order_id,packet_id,object_id
 from log
 where order_id=?
 or packet_id in (select id from packets where order_id=?)
@@ -202,7 +200,6 @@ order by id desc/);
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		$r->{hilight}=1 if $r->{order_id}==$data{order}->{id};
 		push @{$events{elements}},$r;
 	};
 	$sth->finish;
@@ -248,9 +245,7 @@ from orders o where object_id=? order by id desc
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,
-case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
-coalesce(packet_id,object_id,order_id) as kindid
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,order_id,object_id
 from log
 where order_id in (select id from orders where object_id=?)
 or packet_id in (select id from packets where order_id in (select id from orders where object_id=?))
@@ -260,7 +255,6 @@ order by id desc/);
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		$r->{hilight}=1 if $r->{packet_id}==$data{object}->{id};
 		push @{$events{elements}},$r;
 	};
 	$sth->finish;
@@ -292,9 +286,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,
-case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
-coalesce(packet_id,object_id,order_id) as kindid
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,order_id,object_id
 from log
 where order_id = ?
 or packet_id in (select id from packets where order_id = ?)
@@ -304,7 +296,6 @@ order by id desc/);
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		$r->{hilight}=1 if $r->{packet_id}==$packet->{id};
 		push @{$events{elements}},$r;
 	};
 	$sth->finish;
@@ -426,7 +417,7 @@ sub search_packets
 	my $result=read_table($self,qq{
 select
 p.id, o.otd, reg_code, guid, path, actno, reqno 
-from packets p join orders o on o.id=p.order_id
+from packets p left join orders o on o.id=p.order_id
 where }
 .join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
 );
