@@ -80,6 +80,20 @@ sub get_objsource_list
 	return array_ref($self,"select source from objects where source is not null group by source order by source");
 }
 
+sub get_rc_list
+{
+	my ($self)=@_;
+	$self->connect() or return undef;
+	return array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
+}
+
+sub get_path_list
+{
+	my ($self)=@_;
+	$self->connect() or return undef;
+	return array_ref($self,"select path from packets where path is not null group by path order by path");
+}
+
 sub test
 {
 	my ($self,$c)=@_;
@@ -153,34 +167,47 @@ sub read_order_data
 	defined $cc or return undef;
 	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref("select * from orders where id=? and otd ~ ?",undef,$id,$cc->user->{otd});
+	my $r=$dbh->selectrow_hashref(qq{
+select o.*,
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплата' order by id desc limit 1) as paid
+from orders o where id=? and otd ~ ?
+},undef,$id,$cc->user->{otd});
 	return undef unless $r;
-	my $data=$r;
+	my %data;
+	$data{order}=$r;
 	$r=$dbh->selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
-	$data->{object}=$r;
+	$data{object}=$r;
 
 	my $sth=$dbh->prepare("select * from packets where order_id=? order by id desc");
 	$sth->execute($id);
+	my %packets=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$data->{packets}},$r;
+		push @{$packets{elements}},$r;
 	};
 	$sth->finish;
+	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select *
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,order_id,
+case when order_id is not null then 'заказ' when packet_id is not null then 'пакет' when object_id is not null then 'объект' end as evkind,
+coalesce(packet_id,object_id,order_id) as kindid
 from log
 where order_id=?
 or packet_id in (select id from packets where order_id=?)
 or object_id=(select object_id from orders where id=?)
 order by id desc/);
 	$sth->execute($id,$id,$id);
+	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$data->{events}},$r;
+		$r->{hilight}=1 if $r->{order_id}==$data{order}->{id};
+		push @{$events{elements}},$r;
 	};
 	$sth->finish;
-	return $data;
+	$data{events}=\%events;
+	return \%data;
 }
 
 sub read_object_data
@@ -210,7 +237,7 @@ from orders o where object_id=? order by id desc
 	$sth->finish;
 	$data{orders}=\%orders;
 
-	my %packets;
+	my %packets=(elements=>[]);
 	$sth=$dbh->prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
@@ -230,7 +257,7 @@ or packet_id in (select id from packets where order_id in (select id from orders
 or object_id=?
 order by id desc/);
 	$sth->execute($id,$id,$id);
-	my %events;
+	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
 		$r->{hilight}=1 if $r->{packet_id}==$data{object}->{id};
@@ -251,7 +278,7 @@ sub read_packet_data
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
 (select who from log where packet_id=p.id order by id desc limit 1) as who,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id limit 1) as accepted,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as accepted,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as status
 from packets p where id=?}
 ,undef,$id);
@@ -274,7 +301,7 @@ or packet_id in (select id from packets where order_id = ?)
 or object_id=?
 order by id desc/);
 	$sth->execute($order->{id},$order->{id},$object->{id});
-	my %events;
+	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
 		$r->{hilight}=1 if $r->{packet_id}==$packet->{id};
@@ -289,6 +316,9 @@ sub read_table
 	my $self=shift;
 	my $query=shift;
 	my @values=@_;
+
+	use Data::Dumper;
+	$cc->log->debug(Dumper($query).Dumper(\@values));
 
 	$self->connect() or return undef;
 
@@ -372,6 +402,36 @@ where }
 );
 	
 	$result->{header}=['Объект','Отделение','Кадастровый р-н','Адрес','Наименование','Инв. номер','Кадастровый номер','Источник'];
+	return $result;
+
+}
+
+sub search_packets
+{
+	my ($self,$filter,$limit)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %where;
+	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
+	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
+	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
+	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
+
+	$limit+0 or undef $limit;
+	$limit and $limit="limit $limit";
+
+	my $result=read_table($self,qq{
+select
+p.id, o.otd, reg_code, guid, path, actno, reqno 
+from packets p join orders o on o.id=p.order_id
+where }
+.join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
+);
+	
+	$result->{header}=['Пакет','Отделение','Код','ГУИД 1С','Направление','Номер акта','Номер заявления'];
 	return $result;
 
 }
