@@ -59,6 +59,33 @@ sub array_ref
 	return \@result;
 }
 
+sub read_row
+{
+	my ($self, $table, $id)=@_;
+	$self->connect() or return undef;
+	defined $cc or return undef;
+	$table =~ /^[[:alnum:]_]+$/ or return undef;
+	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на чтение таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	my $sth=$dbh->prepare("select * from $table where id=?");
+	$sth->execute($id);
+	my $r=$sth->fetchrow_hashref();
+	my %data=(header=>$sth->{NAME},data=>$r);
+	$data{error}='Строка не найдена' unless $r;
+	return \%data;
+
+}
+
+sub update_row
+{
+	my ($self, $table, $id, $set)=@_;
+	$self->connect() or return undef;
+	defined $cc or return undef;
+	$table =~ /^[[:alnum:]_]+$/ or return undef;
+	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	my $rv=$dbh->do("update $table set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
+	return {rv=>$rv};
+
+}
 sub get_otd_list
 {
 	my ($self)=@_;
@@ -85,6 +112,17 @@ sub get_rc_list
 	my ($self)=@_;
 	$self->connect() or return undef;
 	return array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
+}
+
+sub get_field_list
+{
+	my ($self,$table)=@_;
+	$self->connect() or return undef;
+	my $sth=$dbh->prepare("select * from $table where false");
+	$sth->execute();
+	$sth->fetchrow_hashref();
+	$sth->finish;
+	return $sth->{NAME};
 }
 
 sub get_path_list
