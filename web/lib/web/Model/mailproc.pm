@@ -109,6 +109,24 @@ sub insert_row
 
 }
 
+sub delete_row
+{
+	my ($self, $table, $id)=@_;
+	$self->connect() or return undef;
+	defined $cc or return undef;
+	$table =~ /^[[:alnum:]_]+$/ or return undef;
+	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на удаление данных из таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+
+	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
+
+	my $rv=$dbh->do("delete from $table where id=?",undef,$id);
+
+	return {rv=>$rv,error=>"Ошибка при удалении записи: $DBI::errstr"} unless $rv==1;
+	
+	return {rv=>$rv};
+}
+
+
 sub get_otd_list
 {
 	my ($self)=@_;
