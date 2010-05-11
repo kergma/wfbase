@@ -66,6 +66,7 @@ sub read_row
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на чтение таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	$id or undef $id;
 	my $sth=$dbh->prepare("select * from $table where id=?");
 	$sth->execute($id);
 	my $r=$sth->fetchrow_hashref();
@@ -82,10 +83,32 @@ sub update_row
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
 	my $rv=$dbh->do("update $table set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
+	return {rv=>$rv, error=>"Ошибка при сохранении изменений: $DBI::errstr"} unless $rv==1;
 	return {rv=>$rv};
 
 }
+
+sub insert_row
+{
+	my ($self, $table, $pairs)=@_;
+	$self->connect() or return undef;
+	defined $cc or return undef;
+	$table =~ /^[[:alnum:]_]+$/ or return undef;
+	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	my $rv=$dbh->do("insert into $table (".join(', ', keys %$pairs).") values (".join(', ',map ("?",values %$pairs)).")",undef,values %$pairs);
+
+	return {error=>"Ошибка при добавлении записи: $DBI::errstr"} unless $rv==1;
+	
+	my $r=$dbh->selectrow_hashref("select currval('$table"."_id_seq') as id");
+
+	return {error=>'Ошибка при определении идентификатора новой записи'} unless $r;
+
+	return {rv=>$rv,id=>$r->{id}};
+
+}
+
 sub get_otd_list
 {
 	my ($self)=@_;
