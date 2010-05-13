@@ -174,14 +174,6 @@ sub get_path_list
 	return array_ref($self,"select path from packets where path is not null group by path order by path");
 }
 
-sub test
-{
-	my ($self,$c)=@_;
-	use Data::Dumper;
-
-	return Dumper($cc);
-}
-
 sub authinfo_password
 {
 	my ($self,$authinfo)=@_;
@@ -384,14 +376,12 @@ order by id desc/);
 	$data{events}=\%events;
 	return \%data;
 }
+
 sub read_table
 {
 	my $self=shift;
 	my $query=shift;
 	my @values=@_;
-
-	use Data::Dumper;
-	$cc->log->debug(Dumper($query).Dumper(\@values));
 
 	$self->connect() or return undef;
 
@@ -415,22 +405,24 @@ sub search_orders
 	my ($self,$filter,$limit)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
+	my $start=time;
+	$cc->log->debug('search orders');
 
-	my %where;
-	$where{"o.otd ~ ?"}=$cc->user->{otd};
-	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
-	$where{"year = ?"}=$filter->{year} if $filter->{year};
-	$where{"ordno = ?"}=$filter->{ordno} if $filter->{ordno};
-	$where{"objno = ?"}=$filter->{objno} if $filter->{objno};
-	$where{"exists (select 1 from log where order_id=o.id and date=? and event='принят')"}=$filter->{accepted} if $filter->{accepted};
-	$where{"exists (select 1 from log where order_id=o.id and date=? and event='оплата')"}=$filter->{paid} if $filter->{paid};
-	$where{"exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(?))"}=$filter->{address} if $filter->{address};
-	$where{"exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(?))"}=$filter->{invent_number} if $filter->{invent_number};
+	my @where;
+	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd});
+	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
+	push @where, "year = ".$dbh->quote($filter->{year}) if $filter->{year};
+	push @where, "ordno = ".$dbh->quote($filter->{ordno}) if $filter->{ordno};
+	push @where, "objno = ".$dbh->quote($filter->{objno}) if $filter->{objno};
+	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='принят')",$dbh->quote($filter->{accepted}) if $filter->{accepted};
+	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='оплата')",$dbh->quote($filter->{paid}) if $filter->{paid};
+	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(%s))",$dbh->quote($filter->{address}) if $filter->{address};
+	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(%s))",$dbh->quote($filter->{invent_number}) if $filter->{invent_number};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $result=read_table($self,qq{
+	my $result=read_table($self,sprintf(qq{
 select 
 o.id,o.otd,o.year,o.ordno,o.objno,
 (select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
@@ -438,11 +430,10 @@ o.id,o.otd,o.year,o.ordno,o.objno,
 (select address from objects where id=o.object_id) as address,
 (select invent_number from objects where id=o.object_id) as invent_number
 from orders o
-where }
-.join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
-);
+where %s order by id desc %s},join(" and ",@where),$limit));
 	
 	$result->{header}=['Заказ','Отделение','Год','Номер','Объект','Принят','Оплачен','Адрес','Инв. номер'];
+	$cc->log->debug(sprintf ('search orders completed in %d sec',time-$start));
 	return $result;
 
 }
