@@ -46,11 +46,11 @@ sub connect
 
 sub array_ref
 {
-	my ($self, $q)=@_;
+	my ($self, $q, @params)=@_;
 	$self->connect() or return undef;
 
 	my $sth=$dbh->prepare($q);
-	$sth->execute();
+	$sth->execute(@params);
 	my @result=();
 	while(my $r=$sth->fetchrow_arrayref)
 	{
@@ -130,8 +130,9 @@ sub delete_row
 sub get_otd_list
 {
 	my ($self)=@_;
+	defined $cc or return undef;
 	$self->connect() or return undef;
-	return array_ref($self,"select otd from orders where otd is not null group by otd order by otd");
+	return array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
 }
 
 sub get_cd_list
@@ -225,7 +226,9 @@ union
 select v1 from data where r='отделение роли' and v2 in ($roles)
 union
 select otd from orders group by otd having otd = ? 
-/,undef, $data{full_name},$data{username});
+union
+select v1 from data where r='отделение сущности' and v2=?
+/,undef, $data{full_name},$data{username},$data{full_name});
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
 	return \%data;
