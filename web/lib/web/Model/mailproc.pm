@@ -67,7 +67,7 @@ sub read_row
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на чтение таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 	$id or undef $id;
-	my $sth=$dbh->prepare("select * from $table where id=?");
+	my $sth=$dbh->prepare("select * from ".$dbh->quote_identifier($table)." where id=?");
 	$sth->execute($id);
 	my $r=$sth->fetchrow_hashref();
 	my %data=(header=>$sth->{NAME},data=>$r);
@@ -84,7 +84,7 @@ sub update_row
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
-	my $rv=$dbh->do("update $table set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
+	my $rv=$dbh->do("update ".$dbh->quote_identifier($table)." set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
 	return {rv=>$rv, error=>"Ошибка при сохранении изменений: $DBI::errstr"} unless $rv==1;
 	return {rv=>$rv};
 
@@ -97,7 +97,7 @@ sub insert_row
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
-	my $rv=$dbh->do("insert into $table (".join(', ', keys %$pairs).") values (".join(', ',map ("?",values %$pairs)).")",undef,values %$pairs);
+	my $rv=$dbh->do("insert into ".$dbh->quote_identifier($table)." (".join(', ', keys %$pairs).") values (".join(', ',map ("?",values %$pairs)).")",undef,values %$pairs);
 
 	return {error=>"Ошибка при добавлении записи: $DBI::errstr"} unless $rv==1;
 	
@@ -119,7 +119,7 @@ sub delete_row
 
 	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
 
-	my $rv=$dbh->do("delete from $table where id=?",undef,$id);
+	my $rv=$dbh->do("delete from ".$dbh->quote_identifier($table)." where id=?",undef,$id);
 
 	return {rv=>$rv,error=>"Ошибка при удалении записи: $DBI::errstr"} unless $rv==1;
 	
@@ -172,6 +172,14 @@ sub get_path_list
 	my ($self)=@_;
 	$self->connect() or return undef;
 	return array_ref($self,"select path from packets where path is not null group by path order by path");
+}
+
+sub get_event_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	return array_ref($self,"select event from log where event is not null group by event order by event");
 }
 
 sub authinfo_password
@@ -346,7 +354,7 @@ sub read_packet_data
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
 (select who from log where packet_id=p.id order by id desc limit 1) as who,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as accepted,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id limit 1) as accepted,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as status
 from packets p where id=?}
 ,undef,$id);
@@ -362,11 +370,12 @@ from packets p where id=?}
 	my $sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,order_id,object_id
 from log
-where order_id = ?
+where packet_id = ?
+or order_id=?
 or packet_id in (select id from packets where order_id = ?)
 or object_id=?
 order by id desc/);
-	$sth->execute($order->{id},$order->{id},$object->{id});
+	$sth->execute($packet->{id},$order->{id},$order->{id},$object->{id});
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
@@ -500,4 +509,33 @@ where }
 
 }
 
+sub search_events
+{
+	my ($self,$filter,$limit)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %where;
+	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
+	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
+	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
+	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
+
+	$limit+0 or undef $limit;
+	$limit and $limit="limit $limit";
+
+	my $result=read_table($self,qq{
+select
+p.id, o.otd, reg_code, guid, path, actno, reqno 
+from packets p left join orders o on o.id=p.order_id
+where }
+.join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
+);
+	
+	$result->{header}=['Пакет','Отделение','Код','ГУИД 1С','Направление','Номер акта','Номер заявления'];
+	return $result;
+
+}
 1;
