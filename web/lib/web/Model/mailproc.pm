@@ -179,7 +179,35 @@ sub get_event_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	return array_ref($self,"select event from log where event is not null group by event order by event");
+	my $result=$cc->cache->get("wholist");
+	unless ($result)
+	{
+		$result=array_ref($self,"select event from log where event is not null group by event order by event");
+		$cc->cache->set("wholist",$result);
+	};
+	return $result;
+}
+
+sub get_who_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	my $result=$cc->cache->get("wholist");
+	unless ($result)
+	{
+		$result=array_ref($self,"select who from log where who is not null group by who order by who");
+		$cc->cache->set("wholist",$result);
+	};
+	return $result;
+}
+
+sub get_refto_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	return array_ref($self,"select refto from log where refto is not null group by refto order by refto");
 }
 
 sub authinfo_password
@@ -399,10 +427,9 @@ sub read_table
 
 	my %result=(query=>$query,values=>[@values],header=>[@{$sth->{NAME}}],rows=>[]);
 
-	while(my $r=$sth->fetchrow_arrayref)
+	while(my $r=$sth->fetchrow_hashref)
 	{
-		my @a=@$r;
-		push @{$result{rows}},\@a;
+		push @{$result{rows}},$r;
 	};
 	$sth->finish;
 
@@ -415,7 +442,6 @@ sub search_orders
 	defined $cc or return undef;
 	$self->connect() or return undef;
 	my $start=time;
-	$cc->log->debug('search orders');
 
 	my @where;
 	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd});
@@ -441,8 +467,6 @@ o.id,o.otd,o.year,o.ordno,o.objno,
 from orders o
 where %s order by id desc %s},join(" and ",@where),$limit));
 	
-	$result->{header}=['Заказ','Отделение','Год','Номер','Объект','Принят','Оплачен','Адрес','Инв. номер'];
-	$cc->log->debug(sprintf ('search orders completed in %d sec',time-$start));
 	return $result;
 
 }
@@ -454,8 +478,7 @@ sub search_objects
 	$self->connect() or return undef;
 
 	my %where;
-	$where{"o.otd ~ ?"}=$cc->user->{otd};
-	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"1=?"}=1;
 	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
 	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
 	$where{"lower(o.name) ~ lower(?)"}=$filter->{name} if $filter->{name};
@@ -468,13 +491,12 @@ sub search_objects
 
 	my $result=read_table($self,qq{
 select 
-id, otd, cadastral_district, address, name, invent_number, cadastral_number, source
+id, cadastral_district, address, name, invent_number, cadastral_number, source
 from objects o
 where }
 .join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
 );
 	
-	$result->{header}=['Объект','Отделение','Кадастровый р-н','Адрес','Наименование','Инв. номер','Кадастровый номер','Источник'];
 	return $result;
 
 }
@@ -504,7 +526,6 @@ where }
 .join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
 );
 	
-	$result->{header}=['Пакет','Отделение','Код','ГУИД 1С','Направление','Номер акта','Номер заявления'];
 	return $result;
 
 }
@@ -518,23 +539,26 @@ sub search_events
 	my %where;
 	$where{"o.otd ~ ?"}=$cc->user->{otd};
 	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
-	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
-	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
-	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
-	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
+	$where{"date > ?"}=$filter->{from} if $filter->{from};
+	$where{"date <= ?"}=$filter->{to} if $filter->{to};
+	$where{"who = ?"}=$filter->{who} if $filter->{who};
+	$where{"lower(note) ~ lower(?)"}=$filter->{note} if $filter->{note};
+	$where{"refto = ?"}=$filter->{refto} if $filter->{refto};
+	$where{"refid ~ ?"}=$filter->{refid} if $filter->{refid};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
 	my $result=read_table($self,qq{
 select
-p.id, o.otd, reg_code, guid, path, actno, reqno 
-from packets p left join orders o on o.id=p.order_id
+l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,l.file
+from log l
+left join orders o on (o.id=l.refid and l.refto='orders') or (o.id=(select order_id from packets where id=l.refid and l.refto='packets'))
+left join objects obj on obj.id=o.object_id
 where }
-.join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
+.join (" and ",keys %where)." order by l.id desc $limit",map($where{$_},keys %where)
 );
 	
-	$result->{header}=['Пакет','Отделение','Код','ГУИД 1С','Направление','Номер акта','Номер заявления'];
 	return $result;
 
 }
