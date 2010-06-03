@@ -541,10 +541,13 @@ sub search_events
 	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
 	$where{"date > ?"}=$filter->{from} if $filter->{from};
 	$where{"date <= ?"}=$filter->{to} if $filter->{to};
+	$where{"event = ?"}=$filter->{event} if $filter->{event};
 	$where{"who = ?"}=$filter->{who} if $filter->{who};
 	$where{"lower(note) ~ lower(?)"}=$filter->{note} if $filter->{note};
 	$where{"refto = ?"}=$filter->{refto} if $filter->{refto};
 	$where{"refid ~ ?"}=$filter->{refid} if $filter->{refid};
+	$where{"lower(obj.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
+	$where{"obj.invent_number ~ ?"}=$filter->{invent_number} if $filter->{invent_number};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
