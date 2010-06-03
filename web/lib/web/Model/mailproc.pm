@@ -300,7 +300,7 @@ from orders o where id=? and otd ~ ?
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,order_id,packet_id,object_id
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
 where order_id=?
 or packet_id in (select id from packets where order_id=?)
@@ -355,7 +355,7 @@ from orders o where object_id=? order by id desc
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,order_id,object_id
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
 where order_id in (select id from orders where object_id=?)
 or packet_id in (select id from packets where order_id in (select id from orders where object_id=?))
@@ -382,8 +382,9 @@ sub read_packet_data
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
 (select who from log where packet_id=p.id order by id desc limit 1) as who,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id limit 1) as accepted,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where packet_id=p.id order by id desc limit 1) as status
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
+(select file from log where refto='packets' and refid=p.id and file is not null order by id desc limit 1) as current
 from packets p where id=?}
 ,undef,$id);
 	return undef unless $packet;
@@ -396,7 +397,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,packet_id,order_id,object_id
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
 where packet_id = ?
 or order_id=?
