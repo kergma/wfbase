@@ -45,9 +45,10 @@
 	<li><a href="[% c.uri_for('/sender/status') %]">Статусы объектов</a></li>
 	<li><a href="[% c.uri_for('/sender/statstatus') %]">Статистика статусов объектов</a></li>
 [% IF c.check_any_user_role('проверяющий','контролирующий','оператор','бригадир','диспетчер','наблюдающий') %]
-	<li><a href="[% c.uri_for('/search/orders') %]">Заказы</a></li>
 	<li><a href="[% c.uri_for('/search/objects') %]">Объекты</a></li>
+	<li><a href="[% c.uri_for('/search/orders') %]">Заказы</a></li>
 	<li><a href="[% c.uri_for('/search/packets') %]">Пакеты</a></li>
+	<li><a href="[% c.uri_for('/search/events') %]">События</a></li>
 [% END %]
 </ul>
 </li>

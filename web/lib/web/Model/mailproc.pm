@@ -302,9 +302,9 @@ from orders o where id=? and otd ~ ?
 	$sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
-where order_id=?
-or packet_id in (select id from packets where order_id=?)
-or object_id=(select object_id from orders where id=?)
+where (refto='orders' and refid=?)
+or (refto='packets' and refid in (select id from packets where order_id=?))
+or (refto='objects' and refid=(select object_id from orders where id=?))
 order by id desc/);
 	$sth->execute($id,$id,$id);
 	my %events=(elements=>[]);
@@ -357,9 +357,9 @@ from orders o where object_id=? order by id desc
 	$sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
-where order_id in (select id from orders where object_id=?)
-or packet_id in (select id from packets where order_id in (select id from orders where object_id=?))
-or object_id=?
+where (refto='orders' and refid in (select id from orders where object_id=?))
+or (refto='packets' and refid in (select id from packets where order_id in (select id from orders where object_id=?)))
+or (refto='objects' and refid=?)
 order by id desc/);
 	$sth->execute($id,$id,$id);
 	my %events=(elements=>[]);
@@ -399,10 +399,10 @@ from packets p where id=?}
 	my $sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
-where packet_id = ?
-or order_id=?
-or packet_id in (select id from packets where order_id = ?)
-or object_id=?
+where (refto='packets' and refid = ?)
+or (refto='orders' and refid=?)
+or (refto='packets' and refid in (select id from packets where order_id = ?))
+or (refto='objects' and refid=?)
 order by id desc/);
 	$sth->execute($packet->{id},$order->{id},$order->{id},$object->{id});
 	my %events=(elements=>[]);
@@ -462,18 +462,19 @@ from orders o where object_id in (select refid from log where refto='objects' an
 	my $object=$dbh->selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
 	$data{object}=$object;
 
-	my $order_ids=join(',',grep($_,map($_->{id},@{$orders{elements}}),$order->{id}));
-	my $packet_ids=join(',',grep($_,map($_->{id},@{$packets{elements}}),$packet->{id}));
+	my $order_ids=join(',',grep($_,map($_->{id},@{$orders{elements}}),$order->{id}),0);
+	my $packet_ids=join(',',grep($_,map($_->{id},@{$packets{elements}}),$packet->{id}),0);
 
 	$sth=$dbh->prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
 from log
-where (refto=? and refid=?)
+where id=?
+or (refto=? and refid=?)
 or (refto='orders' and refid in ($order_ids))
 or (refto='packets' and refid in ($packet_ids))
 or (refto='objects' and refid=?)
 order by id desc/);
-	$sth->execute($event->{refto},$event->{refid},$object->{id});
+	$sth->execute($event->{id},$event->{refto},$event->{refid},$object->{id});
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
@@ -631,13 +632,13 @@ sub search_events
 select
 l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,l.file
 from log l
-join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
 left join objects obj on obj.id=o.object_id
 where l.id in
 (
 select l.id
 from log l
-join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
 left join objects obj on obj.id=o.object_id
 where
 }.join (" and ",@where).qq{
