@@ -415,6 +415,75 @@ order by id desc/);
 	return \%data;
 }
 
+sub read_event_data
+{
+	my ($self,$id)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %data;
+	my $event=$dbh->selectrow_hashref(qq{
+select * from log l where id=?}
+,undef,$id);
+	return undef unless $event;
+	$data{event}=$event;
+
+	my $order=$dbh->selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
+	$data{order}=$order;
+
+	my %orders=(elements=>[]);
+	my $sth=$dbh->prepare(qq{
+select o.*,
+(select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where event='оплата' and order_id=o.id order by id desc limit 1) as paid
+from orders o where object_id in (select refid from log where refto='objects' and id=?) order by id desc
+});
+	$sth->execute($id);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$orders{elements}},$r;
+	};
+	$sth->finish;
+	$data{orders}=\%orders;
+
+	my $packet=$dbh->selectrow_hashref("select * from packets where id=(select refid from log where refto='packets' and id=?)",undef,$event->{id});
+	$data{packet}=$packet;
+
+	$sth=$dbh->prepare("select * from packets where order_id in (select refid from log where refto='orders' and id=? union select id from orders where object_id=(select refid from log where refto='objects' and id=?)) order by id desc");
+	$sth->execute($id,$id);
+	my %packets=(elements=>[]);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$packets{elements}},$r;
+	};
+	$sth->finish;
+	$data{packets}=\%packets;
+
+	my $object=$dbh->selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
+	$data{object}=$object;
+
+	my $order_ids=join(',',grep($_,map($_->{id},@{$orders{elements}}),$order->{id}));
+	my $packet_ids=join(',',grep($_,map($_->{id},@{$packets{elements}}),$packet->{id}));
+
+	$sth=$dbh->prepare(qq/
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
+from log
+where (refto=? and refid=?)
+or (refto='orders' and refid in ($order_ids))
+or (refto='packets' and refid in ($packet_ids))
+or (refto='objects' and refid=?)
+order by id desc/);
+	$sth->execute($event->{refto},$event->{refid},$object->{id});
+	my %events=(elements=>[]);
+	while (my $r=$sth->fetchrow_hashref())
+	{
+		push @{$events{elements}},$r;
+	};
+	$sth->finish;
+	$data{events}=\%events;
+	return \%data;
+}
+
 sub read_table
 {
 	my $self=shift;
