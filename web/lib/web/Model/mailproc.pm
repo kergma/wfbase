@@ -423,6 +423,8 @@ sub read_table
 
 	$self->connect() or return undef;
 
+	my $start=time;
+
 	my $sth=$dbh->prepare($query);
 	$sth->execute(@values);
 
@@ -433,6 +435,8 @@ sub read_table
 		push @{$result{rows}},$r;
 	};
 	$sth->finish;
+
+	$result{duration}=time-$start;
 
 	return \%result;
 }
@@ -537,18 +541,19 @@ sub search_events
 	defined $cc or return undef;
 	$self->connect() or return undef;
 
-	my %where;
-	$where{"o.otd ~ ?"}=$cc->user->{otd};
-	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
-	$where{"date > ?"}=$filter->{from} if $filter->{from};
-	$where{"date <= ?"}=$filter->{to} if $filter->{to};
-	$where{"event = ?"}=$filter->{event} if $filter->{event};
-	$where{"who = ?"}=$filter->{who} if $filter->{who};
-	$where{"lower(note) ~ lower(?)"}=$filter->{note} if $filter->{note};
-	$where{"refto = ?"}=$filter->{refto} if $filter->{refto};
-	$where{"refid ~ ?"}=$filter->{refid} if $filter->{refid};
-	$where{"lower(obj.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
-	$where{"obj.invent_number ~ ?"}=$filter->{invent_number} if $filter->{invent_number};
+	my @where;
+	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd}) if $cc->user->{otd};
+	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
+	push @where, "l.date > ".$dbh->quote($filter->{from}) if $filter->{from};
+	push @where, "l.date <= ".$dbh->quote($filter->{to}) if $filter->{to};
+	push @where, "l.event = ".$dbh->quote($filter->{event}) if $filter->{event};
+	push @where, "l.who = ".$dbh->quote($filter->{who}) if $filter->{who};
+	push @where, sprintf "lower(l.note) ~ lower(%s)", $dbh->quote($filter->{note}) if $filter->{note};
+	push @where, "l.refto = ".$dbh->quote($filter->{refto}) if $filter->{refto};
+	push @where, "l.refid = ".$dbh->quote($filter->{refid}) if $filter->{refid};
+	push @where, sprintf "lower(obj.address) ~ lower(%s)", $dbh->quote($filter->{address}) if $filter->{address};
+	push @where, sprintf "lower(obj.invent_number) ~ lower(%s)", $dbh->quote($filter->{invent_number}) if $filter->{invent_number};
+	scalar @where or push @where,'true';
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
@@ -557,11 +562,20 @@ sub search_events
 select
 l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,l.file
 from log l
-left join orders o on (o.id=l.refid and l.refto='orders') or (o.id=(select order_id from packets where id=l.refid and l.refto='packets'))
+join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
 left join objects obj on obj.id=o.object_id
-where }
-.join (" and ",keys %where)." order by l.id desc $limit",map($where{$_},keys %where)
-);
+where l.id in
+(
+select l.id
+from log l
+join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
+left join objects obj on obj.id=o.object_id
+where
+}.join (" and ",@where).qq{
+order by l.id desc $limit
+)
+order by l.id desc
+});
 	
 	return $result;
 
