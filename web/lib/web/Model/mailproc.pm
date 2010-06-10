@@ -179,11 +179,11 @@ sub get_event_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("wholist");
+	my $result=$cc->cache->get("eventlist");
 	unless ($result)
 	{
 		$result=array_ref($self,"select event from log where event is not null group by event order by event");
-		$cc->cache->set("wholist",$result);
+		$cc->cache->set("eventlist",$result);
 	};
 	return $result;
 }
