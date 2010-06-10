@@ -632,14 +632,14 @@ sub search_events
 select
 l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,l.file
 from log l
-left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
-left join objects obj on obj.id=o.object_id
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select 0 where l.refto='objects'))
+left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where l.id in
 (
 select l.id
 from log l
-left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select id from orders where object_id=l.refid and l.refto='objects'))
-left join objects obj on obj.id=o.object_id
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select 0 where l.refto='objects'))
+left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where
 }.join (" and ",@where).qq{
 order by l.id desc $limit
