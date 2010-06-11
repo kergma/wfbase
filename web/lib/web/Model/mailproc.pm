@@ -585,6 +585,7 @@ sub search_packets
 	my %where;
 	$where{"o.otd ~ ?"}=$cc->user->{otd};
 	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"p.path = ?"}=$filter->{path} if $filter->{path};
 	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
 	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
 	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
