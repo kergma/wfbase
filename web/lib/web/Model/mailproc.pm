@@ -520,6 +520,7 @@ sub search_orders
 
 	my @where;
 	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd});
+	push @where, "o.id = ".$dbh->quote($filter->{order_id}) if $filter->{order_id};
 	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
 	push @where, "year = ".$dbh->quote($filter->{year}) if $filter->{year};
 	push @where, "ordno = ".$dbh->quote($filter->{ordno}) if $filter->{ordno};
@@ -554,6 +555,7 @@ sub search_objects
 
 	my %where;
 	$where{"1=?"}=1;
+	$where{"o.id = ?"}=$filter->{object_id} if $filter->{object_id};
 	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
 	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
 	$where{"lower(o.name) ~ lower(?)"}=$filter->{name} if $filter->{name};
@@ -584,6 +586,7 @@ sub search_packets
 
 	my %where;
 	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
 	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
 	$where{"p.path = ?"}=$filter->{path} if $filter->{path};
 	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
@@ -615,6 +618,7 @@ sub search_events
 	my @where;
 	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd}) if $cc->user->{otd};
 	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
+	push @where, "l.id = ".$dbh->quote($filter->{event_id}) if $filter->{event_id};
 	push @where, "l.date > ".$dbh->quote($filter->{from}) if $filter->{from};
 	push @where, "l.date <= ".$dbh->quote($filter->{to}) if $filter->{to};
 	push @where, "l.event = ".$dbh->quote($filter->{event}) if $filter->{event};
