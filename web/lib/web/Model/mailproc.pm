@@ -280,7 +280,7 @@ sub read_order_data
 	my $r=$dbh->selectrow_hashref(qq{
 select o.*,
 (select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплата' order by id desc limit 1) as paid
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплачен' order by id desc limit 1) as paid
 from orders o where id=? and otd ~ ?
 },undef,$id,$cc->user->{otd});
 	return undef unless $r;
@@ -333,7 +333,7 @@ sub read_object_data
 	my $sth=$dbh->prepare(qq{
 select o.*,
 (select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where event='оплата' and order_id=o.id order by id desc limit 1) as paid
+(select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and order_id=o.id order by id desc limit 1) as paid
 from orders o where object_id=? order by id desc
 });
 	$sth->execute($id);
@@ -435,7 +435,7 @@ select * from log l where id=?}
 	my $sth=$dbh->prepare(qq{
 select o.*,
 (select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where event='оплата' and order_id=o.id order by id desc limit 1) as paid
+(select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and order_id=o.id order by id desc limit 1) as paid
 from orders o where object_id in (select refid from log where refto='objects' and id=?) order by id desc
 });
 	$sth->execute($id);
@@ -526,7 +526,7 @@ sub search_orders
 	push @where, "ordno = ".$dbh->quote($filter->{ordno}) if $filter->{ordno};
 	push @where, "objno = ".$dbh->quote($filter->{objno}) if $filter->{objno};
 	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='принят')",$dbh->quote($filter->{accepted}) if $filter->{accepted};
-	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='оплата')",$dbh->quote($filter->{paid}) if $filter->{paid};
+	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='оплачен')",$dbh->quote($filter->{paid}) if $filter->{paid};
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(%s))",$dbh->quote($filter->{address}) if $filter->{address};
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(%s))",$dbh->quote($filter->{invent_number}) if $filter->{invent_number};
 
@@ -537,7 +537,7 @@ sub search_orders
 select 
 o.id,o.otd,o.year,o.ordno,o.objno,
 (select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплата' order by id desc limit 1) as paid,
+(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплачен' order by id desc limit 1) as paid,
 (select address from objects where id=o.object_id) as address,
 (select invent_number from objects where id=o.object_id) as invent_number
 from orders o
