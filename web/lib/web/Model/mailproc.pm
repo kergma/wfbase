@@ -329,7 +329,7 @@ sub read_object_data
 	defined $cc or return undef;
 	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref("select * from objects where id=? and otd ~ ?",undef,$id,$cc->user->{otd});
+	my $r=$dbh->selectrow_hashref("select * from objects o where id=? and exists (select 1 from orders where object_id=o.id and otd ~ ?) ",undef,$id,$cc->user->{otd});
 	return undef unless $r;
 
 	my %data;
@@ -570,6 +570,7 @@ sub search_objects
 
 	my %where;
 	$where{"1=?"}=1;
+	$where{"exists (select 1 from orders where object_id=o.id and otd ~ ?)"}=$cc->user->{otd} if $cc->user->{otd}; 
 	$where{"o.id = ?"}=$filter->{object_id} if $filter->{object_id};
 	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
 	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
