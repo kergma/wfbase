@@ -176,14 +176,17 @@ sub get_path_list
 
 sub get_event_list
 {
-	my ($self)=@_;
+	my ($self,$refto)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("eventlist");
+	defined $refto or $refto='';
+	my $result=$cc->cache->get("eventlist$refto");
 	unless ($result)
 	{
-		$result=array_ref($self,"select event from log where event is not null group by event order by event");
-		$cc->cache->set("eventlist",$result);
+		my $reftow="";
+		$refto and $reftow="and refto=".$dbh->quote($refto);
+		$result=array_ref($self,"select event from log where event is not null $reftow group by event order by event");
+		$cc->cache->set("eventlist$refto",$result);
 	};
 	return $result;
 }
@@ -525,8 +528,8 @@ sub search_orders
 	push @where, "year = ".$dbh->quote($filter->{year}) if $filter->{year};
 	push @where, "ordno = ".$dbh->quote($filter->{ordno}) if $filter->{ordno};
 	push @where, "objno = ".$dbh->quote($filter->{objno}) if $filter->{objno};
-	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='принят')",$dbh->quote($filter->{accepted}) if $filter->{accepted};
-	push @where, sprintf "exists (select 1 from log where order_id=o.id and date=%s and event='оплачен')",$dbh->quote($filter->{paid}) if $filter->{paid};
+	push @where, sprintf "(select event from log where refto='orders' and refid=o.id order by id desc limit 1)=%s",$dbh->quote($filter->{ostatus}) if $filter->{ostatus};
+	push @where, sprintf "(select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1)=%s",$dbh->quote($filter->{pstatus}) if $filter->{pstatus};
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(%s))",$dbh->quote($filter->{address}) if $filter->{address};
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(%s))",$dbh->quote($filter->{invent_number}) if $filter->{invent_number};
 
@@ -536,8 +539,10 @@ sub search_orders
 	my $result=read_table($self,sprintf(qq{
 select 
 o.id,o.otd,o.year,o.ordno,o.objno,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплачен' order by id desc limit 1) as paid,
+(select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
+(select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pstatus,
+(select file from log where event in ('замечания') and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pfile,
+(select id from log where event in ('отказ','УО') and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pevent,
 (select address from objects where id=o.object_id) as address,
 (select invent_number from objects where id=o.object_id) as invent_number
 from orders o
