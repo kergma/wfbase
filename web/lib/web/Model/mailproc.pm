@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use parent 'Catalyst::Model';
 use DBI;
+use Date::Format;
 
 
 
@@ -510,6 +511,7 @@ sub read_table
 	$sth->finish;
 
 	$result{duration}=time-$start;
+	$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',time);
 
 	return \%result;
 }
