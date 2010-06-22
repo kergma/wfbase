@@ -541,16 +541,22 @@ sub search_orders
 	$limit and $limit="limit $limit";
 
 	my $result=read_table($self,sprintf(qq{
-select 
+select o.*,
+(select event from log where id=o.oevent) as ostatus,
+(select event from log where id=o.pevent) as pstatus,
+(select file from log where id=o.pevent) as pfile,
+(select id from log where id=o.pevent and event in ('отказ','УО')) as pevent
+from (
+select  
 o.id,o.otd,o.year,o.ordno,o.objno,
-(select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
-(select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pstatus,
-(select file from log where event in ('замечания') and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pfile,
-(select id from log where event in ('отказ','УО') and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pevent,
+(select id from log where refto='orders' and refid=o.id order by id desc limit 1) as oevent,
+(select id from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pevent,
 (select address from objects where id=o.object_id) as address,
 (select invent_number from objects where id=o.object_id) as invent_number
 from orders o
-where %s order by id desc %s},join(" and ",@where),$limit));
+where %s
+) o 
+order by id desc %s},join(" and ",@where),$limit));
 	
 	return $result;
 
