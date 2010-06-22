@@ -283,8 +283,10 @@ sub read_order_data
 
 	my $r=$dbh->selectrow_hashref(qq{
 select o.*,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='принят' order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where order_id=o.id and event='оплачен' order by id desc limit 1) as paid
+(select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='orders' and refid=o.id order by id desc limit 1) as osdate,
+(select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pstatus,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as psdate
 from orders o where id=? and otd ~ ?
 },undef,$id,$cc->user->{otd});
 	return undef unless $r;
