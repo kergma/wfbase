@@ -29,7 +29,7 @@
 </head>
 <body>
 <p style="background-color:red; color:yellow; font-weight:900">
-	Внимание !!! Изменения в документации, просьба ознакомится здесь: <a href="/doc/html/инструкция">Инструкция</a>, <a href="/doc/html/глоссарий">Глоссарий</a>
+	Внимание !!! Изменения в документации, просьба ознакомиться здесь: <a href="/doc/html/инструкция">Инструкция</a>, <a href="/doc/html/глоссарий">Глоссарий</a>
 </p>
 	
 <div style="visibility:hidden">.</div>
