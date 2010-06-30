@@ -537,6 +537,11 @@ sub search_orders
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(%s))",$dbh->quote($filter->{address}) if $filter->{address};
 	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(%s))",$dbh->quote($filter->{invent_number}) if $filter->{invent_number};
 
+	$filter->{clate} !~ /^\s*[<>]?=?\s*-?\d+\s*$/ and $filter->{clate} !~ /^\s*between\s+-?\d+\s+and\s+-?\d+\s*$/i and $filter->{clate}='';
+	push @where, "(select event from log where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')" if $filter->{clate} or $filter->{olate};
+	push @where, sprintf "(current_date-o.kpeta) %s",$filter->{clate} if $filter->{clate};
+	push @where, sprintf q/extract(day from coalesce((select date from log where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-'15 @day'::interval)) %s/,$filter->{olate} if $filter->{olate};
+
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
@@ -545,14 +550,16 @@ select o.*,
 (select event from log where id=o.oevent) as ostatus,
 (select event from log where id=o.pevent) as pstatus,
 (select file from log where id=o.pevent) as pfile,
-(select id from log where id=o.pevent and event in ('отказ','УО')) as pevent
+(select id from log where id=o.pevent and event in ('отказ','УО','отзыв')) as pevent
 from (
 select  
 o.id,o.otd,o.year,o.ordno,o.objno,
 (select id from log where refto='orders' and refid=o.id order by id desc limit 1) as oevent,
 (select id from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pevent,
 (select address from objects where id=o.object_id) as address,
-(select invent_number from objects where id=o.object_id) as invent_number
+(select invent_number from objects where id=o.object_id) as invent_number,
+current_date-(select o.kpeta where (select event from log where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as clate,
+(select cast(extract(day from coalesce((select date from log where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-15)) as int)  where (select event from log where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as olate
 from orders o
 where %s
 ) o 
