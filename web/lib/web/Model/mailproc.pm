@@ -266,15 +266,6 @@ select v1 from data where r='отделение сущности' and v2=?
 	return \%data;
 }
 
-sub read_orders
-{
-	my ($self,$authinfo)=@_;
-	defined $cc or return undef;
-	$self->connect() or return undef;
-
-	return 'read_orders';
-}
-
 sub read_order_data
 {
 	my ($self,$id)=@_;
@@ -286,7 +277,9 @@ select o.*,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='orders' and refid=o.id order by id desc limit 1) as osdate,
 (select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pstatus,
-(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as psdate
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as psdate,
+extract(days from coalesce((select date from log where refto='orders' and refid=o.id and event in ('закрыт','выдача') order by id desc limit 1),current_date)-o.kpeta) as clate,
+extract(days from coalesce((select date from log where refto='packets' and refid in (select id from packets where order_id=o.id) and event='передача' order by id desc limit 1),current_date)-(o.kpeta-15)) as olate
 from orders o where id=? and otd ~ ?
 },undef,$id,$cc->user->{otd});
 	return undef unless $r;
