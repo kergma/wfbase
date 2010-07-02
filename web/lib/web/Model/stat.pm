@@ -36,11 +36,20 @@ sub connect
 	return $dbh;
 }
 
-sub test
+sub query
 {
-	my ($self)=@_;
+	my ($self,$query)=@_;
 	$self->connect() or return undef;
-	return $dbh->selectrow_hashref("select * from sdata limit 1");
+	my $sth=$dbh->prepare($query);
+	$sth or return {error=>$dbh->errstr};
+	$sth->execute() or return {error=>$dbh->errstr};
+	my @rows;
+	while (my $r=$sth->fetchrow_hashref)
+	{
+		push @rows, $r;
+	}; 
+
+	return {rows=>\@rows, error=>$dbh->errstr};
 }
 
 1;
