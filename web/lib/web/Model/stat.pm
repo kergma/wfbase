@@ -5,6 +5,7 @@ use warnings;
 use parent 'Catalyst::Model';
 use DBI;
 use Encode;
+use Digest::MD5;
 
 =head1 NAME
 
@@ -26,6 +27,16 @@ it under the same terms as Perl itself.
 =cut
 
 my $dbh;
+my $cc;
+my %activity;
+
+sub ACCEPT_CONTEXT
+{
+	my ($self,$c,@args)=@_;
+
+	$cc=$c;
+	return $self;
+}
 
 sub connect
 {
@@ -42,6 +53,19 @@ sub query
 	my ($self,$query)=@_;
 	$self->connect() or return undef;
 
+	my $qkey=Digest::MD5::md5_hex($query);
+	if (defined ($activity{$qkey}))
+	{
+		return {error=>'pending'};
+	};
+	$activity{$qkey}=1;
+	
+	my $retrieval=Digest::MD5::md5_hex(rand());
+	$cc->log->debug("---------------------------- $qkey $retrieval started");
+	open L, ">>/home/mailproc/log/web";
+	print L time,"---------------------------- $qkey $retrieval started\n";
+	close L;
+
 	my $start=time;
 	my $sth=$dbh->prepare($query);
 	$sth or return {error=>$dbh->errstr};
@@ -52,7 +76,23 @@ sub query
 		push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 	}; 
 
-	return {rows=>\@rows, error=>$dbh->errstr, header=>[map(encode("utf8",$_),@{$sth->{NAME}})],duration=>time-$start, retrieved=>time};
+	my $result={qkey=>$qkey,activity=>{%activity},rows=>\@rows, error=>$dbh->errstr, header=>[map(encode("utf8",$_),@{$sth->{NAME}})],duration=>time-$start, retrieved=>time, retrieval=>$retrieval};
+	$cc->cache->set($result->{retrieval},$result);
+	sleep(10);
+
+	delete $activity{$qkey};
+	$cc->log->debug("---------------------------- $qkey $retrieval finished");
+	open L, ">>/home/mailproc/log/web";
+	print L time,"---------------------------- $qkey $retrieval finished\n";
+	close L;
+
+	return $result;
+
+}
+
+sub result
+{
+	my ($retrieval,$start,$count)=@_;
 }
 
 1;
