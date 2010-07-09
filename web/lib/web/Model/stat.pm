@@ -28,7 +28,6 @@ it under the same terms as Perl itself.
 
 my $dbh;
 my $cc;
-my %activity;
 
 sub ACCEPT_CONTEXT
 {
@@ -54,17 +53,14 @@ sub query
 	$self->connect() or return undef;
 
 	my $qkey=Digest::MD5::md5_hex($query);
-	if (defined ($activity{$qkey}))
+	my $pending=$cc->cache->get($qkey);
+	if (defined $pending)
 	{
-		return {error=>'pending'};
+		return {error=>'pending',pending=>$pending};
 	};
-	$activity{$qkey}=1;
 	
 	my $retrieval=Digest::MD5::md5_hex(rand());
-	$cc->log->debug("---------------------------- $qkey $retrieval started");
-	open L, ">>/home/mailproc/log/web";
-	print L time,"---------------------------- $qkey $retrieval started\n";
-	close L;
+	$cc->cache->set($qkey,1);
 
 	my $start=time;
 	my $sth=$dbh->prepare($query);
@@ -76,15 +72,8 @@ sub query
 		push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 	}; 
 
-	my $result={qkey=>$qkey,activity=>{%activity},rows=>\@rows, error=>$dbh->errstr, header=>[map(encode("utf8",$_),@{$sth->{NAME}})],duration=>time-$start, retrieved=>time, retrieval=>$retrieval};
-	$cc->cache->set($result->{retrieval},$result);
-	sleep(10);
-
-	delete $activity{$qkey};
-	$cc->log->debug("---------------------------- $qkey $retrieval finished");
-	open L, ">>/home/mailproc/log/web";
-	print L time,"---------------------------- $qkey $retrieval finished\n";
-	close L;
+	my $result={qkey=>$qkey,rows=>\@rows, error=>$dbh->errstr, header=>[map(encode("utf8",$_),@{$sth->{NAME}})],duration=>time-$start, retrieved=>time, retrieval=>$retrieval};
+	$cc->cache->remove($qkey);
 
 	return $result;
 
