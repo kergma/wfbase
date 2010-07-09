@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use parent 'Catalyst::Model';
 use DBI;
+use Encode;
 
 =head1 NAME
 
@@ -40,16 +41,18 @@ sub query
 {
 	my ($self,$query)=@_;
 	$self->connect() or return undef;
+
+	my $start=time;
 	my $sth=$dbh->prepare($query);
 	$sth or return {error=>$dbh->errstr};
 	$sth->execute() or return {error=>$dbh->errstr};
 	my @rows;
 	while (my $r=$sth->fetchrow_hashref)
 	{
-		push @rows, $r;
+		push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 	}; 
 
-	return {rows=>\@rows, error=>$dbh->errstr};
+	return {rows=>\@rows, error=>$dbh->errstr, header=>[map(encode("utf8",$_),@{$sth->{NAME}})],duration=>time-$start, retrieved=>time};
 }
 
 1;
