@@ -5,6 +5,7 @@ use warnings;
 use parent 'Catalyst::Model';
 use DBI;
 use Date::Format;
+use Encode;
 
 
 
@@ -497,11 +498,11 @@ sub read_table
 	my $sth=$dbh->prepare($query);
 	$sth->execute(@values);
 
-	my %result=(query=>$query,values=>[@values],header=>[@{$sth->{NAME}}],rows=>[]);
+	my %result=(query=>$query,values=>[@values],header=>[map(encode("utf8",$_),@{$sth->{NAME}})],rows=>[]);
 
 	while(my $r=$sth->fetchrow_hashref)
 	{
-		push @{$result{rows}},$r;
+		push @{$result{rows}}, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 	};
 	$sth->finish;
 
