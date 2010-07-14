@@ -104,7 +104,7 @@ sub query
 	$cc->cache->set($retrieval,$result);
 	$dbh->disconnect();
 
-	exit(0);
+	CORE::exit(0);
 
 }
 
