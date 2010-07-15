@@ -40,10 +40,6 @@
 <ul>
 <li>Просмотр
 <ul>
-	<li><a href="[% c.uri_for('/sender/acclog') %]">Принятые пакеты</a></li>
-	<li><a href="[% c.uri_for('/sender/history') %]">История объектов</a></li>
-	<li><a href="[% c.uri_for('/sender/status') %]">Статусы объектов</a></li>
-	<li><a href="[% c.uri_for('/sender/statstatus') %]">Статистика статусов объектов</a></li>
 [% IF c.check_any_user_role('проверяющий','контролирующий','оператор','бригадир','диспетчер','наблюдающий') %]
 	<li><a href="[% c.uri_for('/search/objects') %]">Объекты</a></li>
 	<li><a href="[% c.uri_for('/search/orders') %]">Заказы</a></li>
@@ -59,8 +55,6 @@
 <li>Обработка
 <ul>
 	<li><a href="[% c.uri_for('/log/browse') %]">Просмотр журнала</a></li>
-	<li><a href="[% c.uri_for('/log/add') %]">Добавление записи</a></li>
-	<li><a href="[% c.uri_for('/test/assigned') %]">Назначенные пакеты</a></li>
 	<li>Добавление записи >
 	<ul>
 		<li><a href="/edit/insert/objects?source=web">Объект</a></li>
