@@ -61,7 +61,7 @@ sub query
 	my $cache=$cc->cache;
 
 	my $qkey=Digest::MD5::md5_hex($query);
-	my $querying=$cache->get($qkey);
+	my $querying=$cache->get("qkey-$qkey");
 	if (defined $querying)
 	{
 		return {retrieval=>$querying->{retrieval}};
@@ -80,8 +80,8 @@ sub query
 	{
 		#$SIG{CHLD}=\&reaper;
 		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
-		$cache->set($qkey,$querying);
-		$cache->set($retrieval,{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
+		$cache->set("qkey-$qkey",$querying);
+		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
 		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {retrieval=>$retrieval};
 	};
@@ -101,8 +101,8 @@ sub query
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
 	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr)};
-	$cache->remove($qkey);
-	$cache->set($retrieval,$result);
+	$cache->remove("qkey-$qkey");
+	$cache->set("retr-$retrieval",$result);
 	$dbh->disconnect();
 
 	CORE::exit(0);
@@ -113,10 +113,10 @@ sub result
 {
 	my ($self,$retrieval,$start,$count)=@_;
 	my $cache=$cc->cache;
-	my $result=$cache->get($retrieval);
+	my $result=$cache->get("retr-$retrieval");
 	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
 	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
-	$cache->set($retrieval,$result);
+	$cache->set("retr-$retrieval",$result);
 	return $result;
 }
 
