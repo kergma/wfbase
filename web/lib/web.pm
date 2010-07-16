@@ -64,7 +64,7 @@ __PACKAGE__->config->{'cache'} =
 	backend =>
 	{
 		class => "Cache::FastMmap",
-		expire_time => '300',
+		expire_time => 300,
 		enable_stats => 1,
 	},
 };
