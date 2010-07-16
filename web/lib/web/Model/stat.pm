@@ -58,8 +58,10 @@ sub query
 {
 	my ($self,$query)=@_;
 
+	my $cache=$cc->cache;
+
 	my $qkey=Digest::MD5::md5_hex($query);
-	my $querying=$cc->cache->get($qkey);
+	my $querying=$cache->get($qkey);
 	if (defined $querying)
 	{
 		return {retrieval=>$querying->{retrieval}};
@@ -78,8 +80,8 @@ sub query
 	{
 		#$SIG{CHLD}=\&reaper;
 		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
-		$cc->cache->set($qkey,$querying);
-		$cc->cache->set($retrieval,{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
+		$cache->set($qkey,$querying);
+		$cache->set($retrieval,{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
 		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {retrieval=>$retrieval};
 	};
@@ -99,9 +101,8 @@ sub query
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
 	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr)};
-	#$result={%$result,(query=>$query,qkey=>$qkey,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr)};
-	$cc->cache->remove($qkey);
-	$cc->cache->set($retrieval,$result);
+	$cache->remove($qkey);
+	$cache->set($retrieval,$result);
 	$dbh->disconnect();
 
 	CORE::exit(0);
@@ -111,10 +112,12 @@ sub query
 sub result
 {
 	my ($self,$retrieval,$start,$count)=@_;
-	my $result=$cc->cache->get($retrieval);
-	$result->{querying}->{duration}=time-$result->{querying}->{start} if $result and defined $result->{querying};
-	return $result if $result;
-	return {error=>'Неправильный или устаревший идентификатор запроса'};
+	my $cache=$cc->cache;
+	my $result=$cache->get($retrieval);
+	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
+	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
+	$cache->set($retrieval,$result);
+	return $result;
 }
 
 1;

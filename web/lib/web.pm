@@ -23,7 +23,6 @@ use Catalyst qw/
 		Session::Store::FastMmap
 		Session::State::Cookie
 		Cache
-		Cache::Store::FastMmap
 		/;
 our $VERSION = '0.01';
 
@@ -60,11 +59,13 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 	}
 };
 
-__PACKAGE__->config->{'Plugin::Cache'} =
+__PACKAGE__->config->{'cache'} =
 {
 	backend =>
 	{
-		store => "FastMmap",
+		class => "Cache::FastMmap",
+		expire_time => '300',
+		enable_stats => 1,
 	},
 };
 
