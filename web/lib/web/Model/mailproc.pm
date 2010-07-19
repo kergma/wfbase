@@ -6,6 +6,9 @@ use parent 'Catalyst::Model';
 use DBI;
 use Date::Format;
 use Encode;
+use Digest::MD5;
+use POSIX ":sys_wait_h";
+use Time::HiRes 'usleep';
 
 
 
@@ -43,6 +46,15 @@ sub connect
 {
 	$dbh and return $dbh;
 	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1});
+	return $dbh;
+}
+
+sub sconnect
+{
+	my $tmp=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1});
+	my $r=$tmp->selectrow_hashref("select v1 as password, v2 as username from data where r='пароль пользователя БД' and v2='stat'");
+	$tmp->disconnect;
+	my $dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", $r->{username}, $r->{password}, {AutoCommit => 1});
 	return $dbh;
 }
 
@@ -671,5 +683,70 @@ order by l.id desc
 	
 	return $result;
 
+}
+
+sub query
+{
+	my ($self,$query)=@_;
+
+	my $cache=$cc->cache;
+
+	my $qkey=Digest::MD5::md5_hex($query);
+	my $querying=$cache->get("qkey-$qkey");
+	if (defined $querying)
+	{
+		return {retrieval=>$querying->{retrieval}};
+	};
+
+	my $retrieval=Digest::MD5::md5_hex(rand());
+	my $start=time;
+
+	my $child=fork();
+
+	unless (defined $child)
+	{
+		return {error=>'cannot fork'};
+	};
+	if ($child)
+	{
+		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
+		$cache->set("qkey-$qkey",$querying);
+		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
+		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
+		return {retrieval=>$retrieval};
+	};
+	
+	my $dbh=$self->sconnect() or return undef;
+
+	my $sth=$dbh->prepare($query);
+	my $result={};
+	if ($sth and $sth->execute())
+	{
+		my @rows;
+		while (my $r=$sth->fetchrow_hashref)
+		{
+			push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+		}; 
+
+		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
+	}
+	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr)};
+	$cache->remove("qkey-$qkey");
+	$cache->set("retr-$retrieval",$result);
+	$dbh->disconnect();
+
+	CORE::exit(0);
+
+}
+
+sub result
+{
+	my ($self,$retrieval,$start,$count)=@_;
+	my $cache=$cc->cache;
+	my $result=$cache->get("retr-$retrieval");
+	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
+	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
+	$cache->set("retr-$retrieval",$result);
+	return $result;
 }
 1;
