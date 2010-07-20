@@ -54,8 +54,8 @@ sub sconnect
 	my $tmp=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1});
 	my $r=$tmp->selectrow_hashref("select v1 as password, v2 as username from data where r='пароль пользователя БД' and v2='stat'");
 	$tmp->disconnect;
-	my $dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", $r->{username}, $r->{password}, {AutoCommit => 1});
-	return $dbh;
+	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", $r->{username}, $r->{password}, {AutoCommit => 1});
+	return $sdbh;
 }
 
 sub array_ref
@@ -224,7 +224,13 @@ sub get_refto_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	return array_ref($self,"select refto from log where refto is not null group by refto order by refto");
+	my $result=$cc->cache->get("reftolist");
+	unless ($result)
+	{
+		$result=array_ref($self,"select refto from log where refto is not null group by refto order by refto");
+		$cc->cache->set("reftolist",$result);
+	};
+	return $result;
 }
 
 sub authinfo_password
@@ -662,7 +668,7 @@ sub search_events
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $result=read_table($self,qq{
+	my $result=query($self,qq{
 select
 l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.file
 from log l
@@ -679,7 +685,7 @@ where
 order by l.id desc $limit
 )
 order by l.id desc
-});
+},$filter);
 	
 	return $result;
 
@@ -687,11 +693,17 @@ order by l.id desc
 
 sub query
 {
-	my ($self,$query)=@_;
+	my $self=shift;
+	my $query=shift;
+	my $params=shift;
+	my @values=@_;
 
 	my $cache=$cc->cache;
 
-	my $qkey=Digest::MD5::md5_hex($query);
+	my $md5=Digest::MD5->new;
+	$md5->add($query);
+	$md5->add($_) foreach @values;
+	my $qkey=$md5->hexdigest();
 	my $querying=$cache->get("qkey-$qkey");
 	if (defined $querying)
 	{
@@ -711,7 +723,7 @@ sub query
 	{
 		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
 		$cache->set("qkey-$qkey",$querying);
-		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying});
+		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying,params=>$params});
 		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {retrieval=>$retrieval};
 	};
@@ -730,7 +742,7 @@ sub query
 
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
-	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr)};
+	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr,params=>$params)};
 	$cache->remove("qkey-$qkey");
 	$cache->set("retr-$retrieval",$result);
 	$dbh->disconnect();
