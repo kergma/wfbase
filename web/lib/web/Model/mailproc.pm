@@ -45,7 +45,7 @@ sub ACCEPT_CONTEXT
 sub connect
 {
 	$dbh and return $dbh;
-	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1});
+	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1,InactiveDestroy=>1});
 	return $dbh;
 }
 
@@ -146,7 +146,13 @@ sub get_otd_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	return array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
+	my $result=$cc->cache->get("otdlist".$cc->user->{otd});
+	unless ($result)
+	{
+		$result=array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
+		$cc->cache->set("otdlist".$cc->user->{otd},$result);
+	};
+	return $result;
 }
 
 sub get_cd_list
@@ -167,7 +173,13 @@ sub get_rc_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	return array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
+	my $result=$cc->cache->get("rclist");
+	unless ($result)
+	{
+		$result=array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
+		$cc->cache->set("rclist",$result);
+	};
+	return $result;
 }
 
 sub get_field_list
@@ -185,7 +197,13 @@ sub get_path_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	return array_ref($self,"select path from packets where path is not null group by path order by path");
+	my $result=$cc->cache->get("pathlist");
+	unless ($result)
+	{
+		$result=array_ref($self,"select path from packets where path is not null group by path order by path");
+		$cc->cache->set("pathlist",$result);
+	};
+	return $result;
 }
 
 sub get_event_list
@@ -632,12 +650,12 @@ sub search_packets
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $result=read_table($self,qq{
+	my $result=query($self,qq{
 select
 p.id, o.otd, reg_code, guid, path, actno, reqno 
 from packets p left join orders o on o.id=p.order_id
 where }
-.join (" and ",keys %where)." order by p.id desc $limit",map($where{$_},keys %where)
+.join (" and ",keys %where)." order by p.id desc $limit",$filter,map($where{$_},keys %where)
 );
 	
 	return $result;
@@ -728,11 +746,11 @@ sub query
 		return {retrieval=>$retrieval};
 	};
 	
-	my $dbh=$self->sconnect() or return undef;
+	my $sdbh=$self->sconnect() or return undef;
 
-	my $sth=$dbh->prepare($query);
+	my $sth=$sdbh->prepare($query);
 	my $result={};
-	if ($sth and $sth->execute())
+	if ($sth and $sth->execute(@values))
 	{
 		my @rows;
 		while (my $r=$sth->fetchrow_hashref)
@@ -742,10 +760,10 @@ sub query
 
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
-	$result={%$result,(query=>$query,duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$dbh->errstr,params=>$params)};
+	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$sdbh->errstr,params=>$params)};
 	$cache->remove("qkey-$qkey");
 	$cache->set("retr-$retrieval",$result);
-	$dbh->disconnect();
+	$sdbh->disconnect();
 
 	CORE::exit(0);
 
