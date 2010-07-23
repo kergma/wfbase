@@ -60,17 +60,36 @@ sub sconnect
 
 sub array_ref
 {
-	my ($self, $q, @params)=@_;
+	my ($self, $q, @values)=@_;
 	$self->connect() or return undef;
 
 	my $sth=$dbh->prepare($q);
-	$sth->execute(@params);
+	$sth->execute(@values);
 	my @result=();
 	while(my $r=$sth->fetchrow_arrayref)
 	{
 		push @result,$r->[0];
 	};
 	return \@result;
+}
+
+sub cached_array_ref
+{
+	my ($self, $q, @values)=@_;
+	$self->connect() or return undef;
+
+	my $md5=Digest::MD5->new;
+	$md5->add($q);
+	$md5->add($_) foreach @values;
+	my $qkey=$md5->hexdigest();
+
+	my $result=$cc->cache->get("aref-".$qkey);
+	unless ($result)
+	{
+		$result=array_ref($self,$q,@values);
+		$cc->cache->set("aref-".$qkey,$result);
+	};
+	return $result;
 }
 
 sub read_row
@@ -146,40 +165,28 @@ sub get_otd_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("otdlist".$cc->user->{otd});
-	unless ($result)
-	{
-		$result=array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
-		$cc->cache->set("otdlist".$cc->user->{otd},$result);
-	};
-	return $result;
+	return cached_array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
 }
 
 sub get_cd_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	return array_ref($self,"select cadastral_district from objects where cadastral_district is not null group by cadastral_district order by cadastral_district");
+	return cached_array_ref($self,"select cadastral_district from objects where cadastral_district is not null group by cadastral_district order by cadastral_district");
 }
 
 sub get_objsource_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	return array_ref($self,"select source from objects where source is not null group by source order by source");
+	return cached_array_ref($self,"select source from objects where source is not null group by source order by source");
 }
 
 sub get_rc_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("rclist");
-	unless ($result)
-	{
-		$result=array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
-		$cc->cache->set("rclist",$result);
-	};
-	return $result;
+	return cached_array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
 }
 
 sub get_field_list
@@ -197,13 +204,7 @@ sub get_path_list
 {
 	my ($self)=@_;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("pathlist");
-	unless ($result)
-	{
-		$result=array_ref($self,"select path from packets where path is not null group by path order by path");
-		$cc->cache->set("pathlist",$result);
-	};
-	return $result;
+	return cached_array_ref($self,"select path from packets where path is not null group by path order by path");
 }
 
 sub get_event_list
@@ -211,16 +212,10 @@ sub get_event_list
 	my ($self,$refto)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	defined $refto or $refto='';
-	my $result=$cc->cache->get("eventlist$refto");
-	unless ($result)
-	{
-		my $reftow="";
-		$refto and $reftow="and refto=".$dbh->quote($refto);
-		$result=array_ref($self,"select event from log where event is not null $reftow group by event order by event");
-		$cc->cache->set("eventlist$refto",$result);
-	};
-	return $result;
+
+	my $reftow="";
+	$refto and $reftow="and refto=".$dbh->quote($refto);
+	return cached_array_ref($self,"select event from log where event is not null $reftow group by event order by event");
 }
 
 sub get_who_list
@@ -228,13 +223,7 @@ sub get_who_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("wholist");
-	unless ($result)
-	{
-		$result=array_ref($self,"select who from log where who is not null group by who order by who");
-		$cc->cache->set("wholist",$result);
-	};
-	return $result;
+	return cached_array_ref($self,"select who from log where who is not null group by who order by who");
 }
 
 sub get_refto_list
@@ -242,13 +231,7 @@ sub get_refto_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	my $result=$cc->cache->get("reftolist");
-	unless ($result)
-	{
-		$result=array_ref($self,"select refto from log where refto is not null group by refto order by refto");
-		$cc->cache->set("reftolist",$result);
-	};
-	return $result;
+	return cached_array_ref($self,"select refto from log where refto is not null group by refto order by refto");
 }
 
 sub authinfo_password
@@ -548,6 +531,38 @@ sub read_table
 	return \%result;
 }
 
+sub search_objects
+{
+	my ($self,$filter,$limit)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my %where;
+	$where{"1=?"}=1;
+	$where{"exists (select 1 from orders where object_id=o.id and otd ~ ?)"}=$cc->user->{otd} if $cc->user->{otd}; 
+	$where{"o.id = ?"}=$filter->{object_id} if $filter->{object_id};
+	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
+	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
+	$where{"lower(o.name) ~ lower(?)"}=$filter->{name} if $filter->{name};
+	$where{"lower(o.invent_number) ~ lower(?)"}=$filter->{invent_number} if $filter->{invent_number};
+	$where{"lower(o.cadastral_number) ~ lower(?)"}=$filter->{cadastral_number} if $filter->{cadastral_number};
+	$where{"o.source = ?"}=$filter->{source} if $filter->{source};
+
+	$limit+0 or undef $limit;
+	$limit and $limit="limit $limit";
+
+	my $result=query($self,qq{
+select 
+id, cadastral_district, address, name, invent_number, cadastral_number, source
+from objects o
+where }
+.join (" and ",keys %where)." order by id desc $limit",$filter,map($where{$_},keys %where)
+);
+	
+	return $result;
+
+}
+
 sub search_orders
 {
 	my ($self,$filter,$limit)=@_;
@@ -575,7 +590,7 @@ sub search_orders
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $result=read_table($self,sprintf(qq{
+	my $result=query($self,sprintf(qq{
 select o.*,
 (select event from log where id=o.oevent) as ostatus,
 (select event from log where id=o.pevent) as pstatus,
@@ -593,39 +608,7 @@ current_date-(select o.kpeta where (select event from log where refto='orders' a
 from orders o
 where %s
 ) o 
-order by id desc %s},join(" and ",@where),$limit));
-	
-	return $result;
-
-}
-
-sub search_objects
-{
-	my ($self,$filter,$limit)=@_;
-	defined $cc or return undef;
-	$self->connect() or return undef;
-
-	my %where;
-	$where{"1=?"}=1;
-	$where{"exists (select 1 from orders where object_id=o.id and otd ~ ?)"}=$cc->user->{otd} if $cc->user->{otd}; 
-	$where{"o.id = ?"}=$filter->{object_id} if $filter->{object_id};
-	$where{"o.cadastral_district = ?"}=$filter->{cadastral_district} if $filter->{cadastral_district};
-	$where{"lower(o.address) ~ lower(?)"}=$filter->{address} if $filter->{address};
-	$where{"lower(o.name) ~ lower(?)"}=$filter->{name} if $filter->{name};
-	$where{"lower(o.invent_number) ~ lower(?)"}=$filter->{invent_number} if $filter->{invent_number};
-	$where{"lower(o.cadastral_number) ~ lower(?)"}=$filter->{cadastral_number} if $filter->{cadastral_number};
-	$where{"o.source = ?"}=$filter->{source} if $filter->{source};
-
-	$limit+0 or undef $limit;
-	$limit and $limit="limit $limit";
-
-	my $result=read_table($self,qq{
-select 
-id, cadastral_district, address, name, invent_number, cadastral_number, source
-from objects o
-where }
-.join (" and ",keys %where)." order by id desc $limit",map($where{$_},keys %where)
-);
+order by id desc %s},join(" and ",@where),$limit),$filter);
 	
 	return $result;
 
