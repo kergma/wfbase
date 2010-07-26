@@ -745,7 +745,12 @@ sub query
 	}
 	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$sdbh->errstr,params=>$params)};
 	$cache->remove("qkey-$qkey");
-	$cache->set("retr-$retrieval",$result);
+	unless ($cache->set("retr-$retrieval",$result))
+	{
+		delete $result->{rows};
+		$result->{error}='Не удалось произвести кеширование - результат слишком велик';
+		$cache->set("retr-$retrieval",$result);
+	};
 	$sdbh->disconnect();
 
 	CORE::exit(0);
