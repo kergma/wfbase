@@ -35,7 +35,7 @@ our $VERSION = '0.01';
 # with a external configuration file acting as an override for
 # local deployment.
 
-__PACKAGE__->config( name => 'web' );
+__PACKAGE__->config( name => 'web', default_view => 'TT' );
 
 __PACKAGE__->config->{'Plugin::Authentication'} = 
 { 
