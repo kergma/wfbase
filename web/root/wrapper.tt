@@ -77,6 +77,10 @@
 	<li><a href="[% c.uri_for('/export/history') %]">История передач</a></li>
 [% END %]
 	<li><a href="[% c.uri_for('/dispatch/queue') %]">Очередь обработки</a></li>
+[% IF c.check_any_user_role('контролирующий','разработчик') %]
+<li><a href="/query/cat">Каталог</a></li>
+<li><a href="/query/edit">Редактор</a></li>
+[% END %]
 </ul>
 </li>
 </ul>
