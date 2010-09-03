@@ -692,6 +692,45 @@ order by l.id desc
 
 }
 
+sub dispatch_queue
+{
+	my ($self,$filter)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+
+	my @where;
+	push @where, "p.reg_code='raw'" if $filter->{type} eq 'Исходные';
+	push @where, "p.reg_code<>'raw'" if $filter->{type} eq 'XML';
+	
+	push @where, "l.event in ('филиал','проверка')" if $filter->{event} eq 'Проверка';
+	push @where, "(l.event='ввод' or (l.event='проверен' and p.reg_code='raw'))" if $filter->{event} eq 'Ввод';
+	push @where, "(l.event in ('филиал','проверка','ввод') or (l.event='проверен' and p.reg_code='raw'))" if $filter->{event} eq 'Все' or !defined($filter->{event});
+
+	push @where, "(l.event='филиал' or (l.event='проверен' and p.reg_code='raw'))" if $filter->{state} eq 'В ожидании';
+	push @where, "(l.event in ('проверка','ввод'))" if $filter->{state} eq 'Обрабатываются';
+
+	push @where, 'not exists (select 1 from log where id>l.id and refto=l.refto and refid=l.refid)';
+
+	scalar @where or push @where,'true';
+
+	my $result=query($self,qq{
+select o.id as order_id, o.kpeta, p.path, p.id as packet_id, p.reg_code,
+o.otd, 
+coalesce((select max(d.v1) from sdata d where d.v2=o.otd and d.r ='приоритет отделения' union select max(d.v1) from sdata d where d.v2=p.path and d.r ='приоритет направления' order by 1 desc limit 1),'0') as priority,
+j.id as object_id,j.address,j.invent_number,
+l.event,l.who
+from log l 
+join packets p on p.id=l.refid and l.refto='packets'
+join orders o on o.id=p.order_id
+join objects j on j.id=o.object_id
+where 
+}.join (" and ",@where).qq{
+order by o.kpeta, p.id
+},$filter);
+	
+	return $result;
+
+}
 sub query
 {
 	my $self=shift;
