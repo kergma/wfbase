@@ -718,7 +718,7 @@ select o.id as order_id, o.kpeta, p.path, p.id as packet_id, p.reg_code,
 o.otd, 
 coalesce((select max(d.v1) from sdata d where d.v2=o.otd and d.r ='приоритет отделения' union select max(d.v1) from sdata d where d.v2=p.path and d.r ='приоритет направления' order by 1 desc limit 1),'0') as priority,
 j.id as object_id,j.address,j.invent_number,
-l.event,l.who
+l.event,l.who,to_char(l.date,'yyyy-mm-dd hh24:mi') as date
 from log l 
 join packets p on p.id=l.refid and l.refto='packets'
 join orders o on o.id=p.order_id
