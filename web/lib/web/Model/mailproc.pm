@@ -402,8 +402,10 @@ sub read_packet_data
 select p.*,
 (select who from log where packet_id=p.id order by id desc limit 1) as who,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
-(select file from log where refto='packets' and refid=p.id and file is not null order by id desc limit 1) as current
+(select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date,
+(select file from log where refto='packets' and refid=p.id and file is not null order by id desc limit 1) as current,
+(select t.file from log l join timeline t on t.basename=l.file where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current_file
 from packets p where id=?}
 ,undef,$id);
 	return undef unless $packet;
