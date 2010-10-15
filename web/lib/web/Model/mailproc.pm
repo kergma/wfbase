@@ -724,7 +724,7 @@ l.event,l.who,to_char(l.date,'yyyy-mm-dd hh24:mi') as date
 from log l 
 join packets p on p.id=l.refid and l.refto='packets'
 join orders o on o.id=p.order_id
-join objects j on j.id=o.object_id
+left join objects j on j.id=o.object_id
 where 
 }.join (" and ",@where).qq{
 order by o.kpeta, p.id
