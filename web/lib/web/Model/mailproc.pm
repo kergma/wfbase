@@ -586,6 +586,7 @@ sub search_orders
 
 	$filter->{clate} !~ /^\s*[<>]?=?\s*-?\d+\s*$/ and $filter->{clate} !~ /^\s*between\s+-?\d+\s+and\s+-?\d+\s*$/i and $filter->{clate}='';
 	push @where, "(select event from log where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')" if $filter->{clate} or $filter->{olate};
+	push @where, "exists (select 1 from log where refto='orders' and refid=o.id and event='оплачен')" if $filter->{clate} or $filter->{olate};
 	push @where, sprintf "(current_date-o.kpeta) %s",$filter->{clate} if $filter->{clate};
 	push @where, sprintf q/extract(day from coalesce((select date from log where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-'15 @day'::interval)) %s/,$filter->{olate} if $filter->{olate};
 
