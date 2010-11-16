@@ -632,13 +632,15 @@ sub search_packets
 	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
 	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
 	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
+	$where{"(select event from log where refto='packets' and refid=p.id order by id desc limit 1)=?"}=$filter->{status} if $filter->{status};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
 	my $result=query($self,qq{
 select
-p.id, o.otd, reg_code, guid, path, actno, reqno 
+p.id, o.otd, reg_code, guid, path, actno, reqno,
+(select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status
 from packets p left join orders o on o.id=p.order_id
 where }
 .join (" and ",keys %where)." order by p.id desc $limit",$filter,map($where{$_},keys %where)
