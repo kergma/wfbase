@@ -26,6 +26,8 @@ use Catalyst qw/
 		/;
 our $VERSION = '0.01';
 
+use Cwd 'abs_path';
+use lib abs_path($0)=~'/dev/'?'/home/mailproc/dev/lib':'/home/mailproc/lib';
 # Configure the application. 
 #
 # Note that settings in web.conf (or other external
