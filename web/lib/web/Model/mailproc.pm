@@ -342,7 +342,7 @@ sub read_object_data
 	defined $cc or return undef;
 	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref("select * from objects o where id=? and exists (select 1 from orders where object_id=o.id and otd ~ ?) ",undef,$id,$cc->user->{otd});
+	my $r=$dbh->selectrow_hashref("select * from objects o where id=? and (exists (select 1 from orders where object_id=o.id and otd ~ ?) or not exists (select 1 from orders where object_id=o.id))",undef,$id,$cc->user->{otd});
 	return undef unless $r;
 
 	my %data;
