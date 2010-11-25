@@ -66,9 +66,10 @@ sub array_ref
 	my $sth=$dbh->prepare($q);
 	$sth->execute(@values);
 	my @result=();
-	while(my $r=$sth->fetchrow_arrayref)
+	while(my $r=$sth->fetchrow_hashref)
 	{
-		push @result,$r->[0];
+		push @result,join('',values %$r) if keys(%$r)==1;
+		push @result,$r if keys(%$r)>1;
 	};
 	return \@result;
 }
@@ -224,6 +225,20 @@ sub get_who_list
 	defined $cc or return undef;
 	$self->connect() or return undef;
 	return cached_array_ref($self,"select who from log where who is not null group by who order by who");
+}
+
+sub get_oper_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	return cached_array_ref($self,qq/
+select d2.v2 as full_name, substring(d2.v2,'^\\\\S+') as who, d2.v1 as email
+from data d1
+join data d2 on d2.v2=d1.v2 and d2.r='email сущности' 
+where d1.v1 ~ 'оператор|проверяющий' and d1.r ='описание сущности'
+order by full_name
+/);
 }
 
 sub get_refto_list
@@ -815,4 +830,27 @@ sub result
 	$cache->set("retr-$retrieval",$result);
 	return $result;
 }
+
+sub log_packet_dispatch
+{
+	my $self=shift;
+	my $data=shift;
+	my $last_event=shift;
+
+	$self->connect() or return undef;
+
+	return $data;
+
+	return $dbh->selectrow_hashref("select * from log l where refto='packets' and refid=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and id=?",undef,$data->{packet_id},$last_event->{id});
+
+
+}
+
+sub get_who_email
+{
+	my ($self,$who)=@_;
+	my $r=$dbh->selectrow_hashref("select v1 as email from data where r='email сущности' and substring(v2,'^\\\\S+')=?",undef,$who);
+	return $r->{email} if $r;
+}
+
 1;
