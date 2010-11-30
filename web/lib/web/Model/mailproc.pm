@@ -9,6 +9,7 @@ use Encode;
 use Digest::MD5;
 use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
+use packetproc;
 
 
 
@@ -233,11 +234,11 @@ sub get_oper_list
 	defined $cc or return undef;
 	$self->connect() or return undef;
 	return cached_array_ref($self,qq/
-select d2.v2 as full_name, substring(d2.v2,'^\\\\S+') as who, d2.v1 as email
+select substring(d2.v2,E'^\\\\S+') as who
 from data d1
 join data d2 on d2.v2=d1.v2 and d2.r='email сущности' 
 where d1.v1 ~ 'оператор|проверяющий' and d1.r ='описание сущности'
-order by full_name
+order by who
 /);
 }
 
@@ -831,25 +832,40 @@ sub result
 	return $result;
 }
 
-sub log_packet_dispatch
+sub log_packet
 {
 	my $self=shift;
 	my $data=shift;
 	my $last_event=shift;
 
-	$self->connect() or return undef;
+	foreach (values %$data) {undef $_ unless $_;};
+	my $query=sprintf "insert into log (event,who,note,file,message_id,refto,refid) values (%s,%s,%s,%s,%s,'packets',%s)",$dbh->quote($data->{event}),$dbh->quote($data->{who}),$dbh->quote($data->{note}),$dbh->quote($data->{file}),$dbh->quote($data->{message_id}),$data->{packet_id};
+		
+	my $rv=$dbh->do($query);
+	packetproc::log(sprintf("log insert error\n%s\n%s",$query,$dbh->errstr)) if $rv!=1;
 
-	return $data;
+	return $rv;
+}
 
-	return $dbh->selectrow_hashref("select * from log l where refto='packets' and refid=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and id=?",undef,$data->{packet_id},$last_event->{id});
+sub set_packet_path
+{
+	my $self=shift;
+	my $packet_id=shift;
+	my $path=shift;
 
 
+	my $query=sprintf "update packets set path=%s where id=%s",$dbh->quote($path),$packet_id;
+
+	my $rv=$dbh->do($query);
+	packetproc::log(sprintf("packet update error\n%s\n%s",$query,$dbh->errstr)) if $rv!=1;
+
+	return $rv;
 }
 
 sub get_who_email
 {
 	my ($self,$who)=@_;
-	my $r=$dbh->selectrow_hashref("select v1 as email from data where r='email сущности' and substring(v2,'^\\\\S+')=?",undef,$who);
+	my $r=$dbh->selectrow_hashref("select v1 as email from data where r='email сущности' and substring(v2,E'^\\\\S+')=?",undef,$who);
 	return $r->{email} if $r;
 }
 
