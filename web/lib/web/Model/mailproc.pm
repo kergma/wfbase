@@ -421,6 +421,7 @@ select p.*,
 (select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date,
 (select t.id from log l join timeline t on t.basename=l.file where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current,
+(select l.file from log l where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current_basename,
 (select t.file from log l join timeline t on t.basename=l.file where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current_file
 from packets p where id=?}
 ,undef,$id);
