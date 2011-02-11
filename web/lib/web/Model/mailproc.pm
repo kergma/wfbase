@@ -335,8 +335,9 @@ from orders o where id=? and otd ~ ?
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
-from log
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
+(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
+from log l
 where (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id=?))
 or (refto='objects' and refid=(select object_id from orders where id=?))
@@ -390,8 +391,9 @@ from orders o where object_id=? order by id desc
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
-from log
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
+(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
+from log l
 where (refto='orders' and refid in (select id from orders where object_id=?))
 or (refto='packets' and refid in (select id from packets where order_id in (select id from orders where object_id=?)))
 or (refto='objects' and refid=?)
@@ -435,8 +437,9 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
-from log
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
+(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
+from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id = ?))
@@ -504,8 +507,9 @@ from orders o where object_id in (select refid from log where refto='objects' an
 	my $packet_ids=join(',',grep($_,map($_->{id},@{$packets{elements}}),$packet->{id}),0);
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file
-from log
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
+(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
+from log l
 where id=?
 or (refto=? and refid=?)
 or (refto='orders' and refid in ($order_ids))
