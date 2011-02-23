@@ -46,16 +46,13 @@ sub ACCEPT_CONTEXT
 sub connect
 {
 	$dbh and return $dbh;
-	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1,InactiveDestroy=>1});
+	$dbh=DBI->connect("dbi:Pg:dbname=mailproc", undef, undef, {AutoCommit => 1,InactiveDestroy=>1});
 	return $dbh;
 }
 
 sub sconnect
 {
-	my $tmp=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", undef, undef, {AutoCommit => 1});
-	my $r=$tmp->selectrow_hashref("select v1 as password, v2 as username from data where r='пароль пользователя БД' and v2='stat'");
-	$tmp->disconnect;
-	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc;host=localhost", $r->{username}, $r->{password}, {AutoCommit => 1});
+	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc", 'stat', undef, {AutoCommit => 1});
 	return $sdbh;
 }
 
