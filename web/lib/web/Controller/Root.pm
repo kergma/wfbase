@@ -52,6 +52,7 @@ sub end : ActionClass('RenderView') {}
 sub auto :Private
 {
 	my ($self, $c) = @_;
+	srand();
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;
