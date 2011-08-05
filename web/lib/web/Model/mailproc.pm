@@ -280,6 +280,7 @@ where d1.v2=? and d1.r like 'пароль%'
 		push @{$data{roles}}, split / /,$r->{description};
 	};
 	$sth->finish();
+	push @{$data{roles}}, $authinfo->{username};
 
 	$data{otd}='x';
 
