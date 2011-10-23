@@ -129,14 +129,15 @@ sub insert_row
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
 	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
-	my $rv=$dbh->do("insert into ".$dbh->quote_identifier($table)." (".join(', ', keys %$pairs).") values (".join(', ',map ("?",values %$pairs)).")",undef,values %$pairs);
+	
+	my $r=$dbh->selectrow_hashref("select nextval('$table"."_id_seq') as id");
+	$r=$dbh->selectrow_hashref("select uuid_generate_v1o() as id") unless $r;
+	return {error=>'Ошибка при определении идентификатора новой записи'} unless $r;
+
+	my $rv=$dbh->do("insert into ".$dbh->quote_identifier($table)." (id, ".join(', ', keys %$pairs).") values (?, ".join(', ',map ("?",values %$pairs)).")",undef,$r->{id},values %$pairs);
 
 	return {error=>"Ошибка при добавлении записи: $DBI::errstr"} unless $rv==1;
 	
-	my $r=$dbh->selectrow_hashref("select currval('$table"."_id_seq') as id");
-
-	return {error=>'Ошибка при определении идентификатора новой записи'} unless $r;
-
 	return {rv=>$rv,id=>$r->{id}};
 
 }
@@ -366,8 +367,8 @@ sub read_object_data
 	my %orders;
 	my $sth=$dbh->prepare(qq{
 select o.*,
-(select to_char(date,'yyyy-mm-dd') from log where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and order_id=o.id order by id desc limit 1) as paid
+(select to_char(date,'yyyy-mm-dd') from log where event='принят' and refto='orders' and refid=o.id order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and refto='orders' and refid=o.id order by id desc limit 1) as paid
 from orders o where object_id=? order by id desc
 });
 	$sth->execute($id);
@@ -416,7 +417,7 @@ sub read_packet_data
 	my %data;
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
-(select who from log where packet_id=p.id order by id desc limit 1) as who,
+(select who from log where refto='packets' and refid=p.id order by id desc limit 1) as who,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
 (select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date,
@@ -700,13 +701,13 @@ sub search_events
 select
 l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.file
 from log l
-left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select 0 where l.refto='objects'))
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where l.id in
 (
 select l.id
 from log l
-left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select 0 where l.refto='objects'))
+left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where
 }.join (" and ",@where).qq{
