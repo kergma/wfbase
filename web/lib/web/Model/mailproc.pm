@@ -843,7 +843,7 @@ sub log_packet
 	my $last_event=shift;
 
 	foreach (values %$data) {undef $_ unless $_;};
-	my $query=sprintf "insert into log (event,who,note,file,message_id,refto,refid) values (%s,%s,%s,%s,%s,'packets',%s)",$dbh->quote($data->{event}),$dbh->quote($data->{who}),$dbh->quote($data->{note}),$dbh->quote($data->{file}),$dbh->quote($data->{message_id}),$data->{packet_id};
+	my $query=sprintf "insert into log (event,who,note,file,message_id,refto,refid) values (%s,%s,%s,%s,%s,'packets',%s)",$dbh->quote($data->{event}),$dbh->quote($data->{who}),$dbh->quote($data->{note}),$dbh->quote($data->{file}),$dbh->quote($data->{message_id}),$dbh->quote($data->{packet_id});
 		
 	my $rv=$dbh->do($query);
 	packetproc::log(sprintf("log insert error\n%s\n%s",$query,$dbh->errstr)) if $rv!=1;
