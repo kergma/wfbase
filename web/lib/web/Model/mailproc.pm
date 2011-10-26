@@ -652,21 +652,25 @@ sub search_packets
 	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
 	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
 	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
-	$where{"(select event from log where refto='packets' and refid=p.id order by id desc limit 1)=?"}=$filter->{status} if $filter->{status};
+	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
+	my $w=join (" and ",keys %where);
 	my $result=query($self,qq{
 select
-p.id, o.otd, reg_code, guid, path, actno, reqno,
-(select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
-(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date,
-(select file from log where refto='packets' and refid=p.id order by id desc limit 1) as status_file,
-(select id from log where refto='packets' and refid=p.id order by id desc limit 1) as status_event
-from packets p left join orders o on o.id=p.order_id
-where }
-.join (" and ",keys %where)." order by p.id desc $limit",$filter,map($where{$_},keys %where)
+s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, file  as status_file, l.id as status_event
+from (
+select p.id as packet_id, o.otd, reg_code,guid,path,actno,reqno
+from packets p
+left join orders o on o.id=p.order_id
+where $w
+order by p.id desc
+$limit
+) s
+left join log l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
+},$filter,map($where{$_},keys %where)
 );
 	
 	return $result;
