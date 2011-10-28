@@ -46,13 +46,13 @@ sub ACCEPT_CONTEXT
 sub connect
 {
 	$dbh and return $dbh;
-	$dbh=DBI->connect("dbi:Pg:dbname=mailproc", undef, undef, {AutoCommit => 1,InactiveDestroy=>1});
+	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'mailproc', undef, {AutoCommit => 1,InactiveDestroy=>1});
 	return $dbh;
 }
 
 sub sconnect
 {
-	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc", 'stat', undef, {AutoCommit => 1});
+	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'stat', undef, {AutoCommit => 1});
 	return $sdbh;
 }
 
