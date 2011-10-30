@@ -61,7 +61,7 @@
 		<li><a href="/edit/insert/objects?source=web">Объект</a></li>
 		<li><a href="/edit/insert/orders">Заказ</a></li>
 		<li><a href="/edit/insert/packets">Пакет</a></li>
-		<li><a href="/edit/insert/log?who=[% c.user.username %]">Событие</a></li>
+		<li><a href="/edit/insert/log_old?who=[% c.user.username %]">Событие</a></li>
 	</ul>
 	</li>
 </ul>
