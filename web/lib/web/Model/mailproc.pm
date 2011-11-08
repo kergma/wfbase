@@ -615,23 +615,28 @@ sub search_orders
 
 	my $result=query($self,sprintf(qq{
 select o.*,
+j.address,
+j.invent_number,
 (select event from log_old where id=o.oevent) as ostatus,
 (select event from log_old where id=o.pevent) as pstatus,
 (select file from log_old where id=o.pevent) as pfile,
 (select id from log_old where id=o.pevent and event in ('отказ','УО','отзыв')) as pevent
 from (
-select  
-o.id,o.otd,o.year,o.ordno,o.objno,
-(select id from log_old where refto='orders' and refid=o.id order by id desc limit 1) as oevent,
-(select id from log_old where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pevent,
-(select address from objects where id=o.object_id) as address,
-(select invent_number from objects where id=o.object_id) as invent_number,
+select
+o.*,
+(select max(id) from log_old where refto='orders' and refid=o.id) as oevent,
+(select max(id) from log_old where refto='packets' and refid in (select id from packets where order_id=o.id)) as pevent,
 current_date-(select o.kpeta where (select event from log_old where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as clate,
 (select cast(extract(day from coalesce((select date from log_old where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-15)) as int)  where (select event from log_old where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as olate
-from orders o
-where %s
-) o 
-order by id desc %s},join(" and ",@where),$limit),$filter);
+from (
+select * from orders o
+where
+%s
+order by o.id desc %s
+) o
+) o
+left join objects j on j.id=o.object_id
+},join(" and ",@where),$limit),$filter);
 	
 	return $result;
 
