@@ -80,6 +80,7 @@
 	<li><a href="[% c.uri_for('/dispatch/queue') %]">Очередь обработки</a></li>
 [% IF c.check_any_user_role('контролирующий','разработчик') %]
 <li><a href="/query/edit">Редактор</a></li>
+<li><a href="/task/status">Текущие задачи</a></li>
 [% END %]
 </ul>
 </li>
