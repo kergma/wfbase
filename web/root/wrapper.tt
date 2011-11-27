@@ -82,7 +82,7 @@
 <li><a href="/query/edit">Редактор</a></li>
 <li><a href="/task/status">Текущие задачи</a> >
 	<ul>
-		<li><a href="/task/schedule?задача=выгрузка сведений об окс&confirm=1">Выгрузить запросы сведений по ОКС</a></li>
+		<li><a href="/task/schedule?задача=передача запросов сведений об окс&confirm=1">Передать запросы сведений об ОКС</a></li>
 	</ul>
 </li>
 [% END %]
