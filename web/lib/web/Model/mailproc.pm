@@ -907,10 +907,8 @@ sub set_packet_path
 	my $path=shift;
 
 
-	my $query=sprintf "update packets set path=%s where id=%s",$dbh->quote($path),$packet_id;
-
-	my $rv=$dbh->do($query);
-	packetproc::log(sprintf("packet update error\n%s\n%s",$query,$dbh->errstr)) if $rv!=1;
+	my $rv=$dbh->do("update packets set path=? where id=?",undef,$path,$packet_id);
+	packetproc::log(sprintf("packet update error\n%s",$dbh->errstr)) unless $rv;
 
 	return $rv;
 }
