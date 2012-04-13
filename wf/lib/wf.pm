@@ -26,9 +26,8 @@ use Catalyst qw/
 		/;
 our $VERSION = '0.01';
 
-my $user='worker';
 use Cwd 'abs_path';
-use lib abs_path($0)=~'/dev/'?"/home/$user/dev/lib":"/home/$user/lib";
+use lib abs_path($0)=~'/dev/'?"/home/worker/dev/lib":"/home/worker/lib";
 # Configure the application. 
 #
 # Note that settings in wf.conf (or other external
