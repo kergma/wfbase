@@ -26,8 +26,9 @@ use Catalyst qw/
 		/;
 our $VERSION = '0.01';
 
-use FindBin;
-use lib "$FindBin::Bin/../../lib";
+my $user='worker';
+use Cwd 'abs_path';
+use lib abs_path($0)=~'/dev/'?"/home/$user/dev/lib":"/home/$user/lib";
 # Configure the application. 
 #
 # Note that settings in wf.conf (or other external
