@@ -26,8 +26,8 @@ use Catalyst qw/
 		/;
 our $VERSION = '0.01';
 
-use Cwd 'abs_path';
-use lib abs_path($0)=~'/dev/'?'/home/mailproc/dev/lib':'/home/mailproc/lib';
+use FindBin;
+use lib "$FindBin::Bin/../../lib";
 # Configure the application. 
 #
 # Note that settings in wf.conf (or other external
@@ -61,7 +61,7 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 	}
 };
 
-__PACKAGE__->config->{'cache'} =
+__PACKAGE__->config->{"Plugin::Cache"} =
 {
 	backend =>
 	{
