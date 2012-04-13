@@ -1,4 +1,4 @@
-package web;
+package wf;
 
 use strict;
 use warnings;
@@ -30,14 +30,14 @@ use Cwd 'abs_path';
 use lib abs_path($0)=~'/dev/'?'/home/mailproc/dev/lib':'/home/mailproc/lib';
 # Configure the application. 
 #
-# Note that settings in web.conf (or other external
+# Note that settings in wf.conf (or other external
 # configuration file that you set up manually) take precedence
 # over this when using ConfigLoader. Thus configuration
 # details given here can function as a default configuration,
 # with a external configuration file acting as an override for
 # local deployment.
 
-__PACKAGE__->config( name => 'web', default_view => 'TT' );
+__PACKAGE__->config( name => 'wf', default_view => 'TT' );
 
 __PACKAGE__->config->{'Plugin::Authentication'} = 
 { 
@@ -78,11 +78,11 @@ __PACKAGE__->setup();
 
 =head1 NAME
 
-web - Catalyst based application
+wf - Catalyst based application
 
 =head1 SYNOPSIS
 
-    script/web_server.pl
+    script/wf_server.pl
 
 =head1 DESCRIPTION
 
@@ -90,7 +90,7 @@ web - Catalyst based application
 
 =head1 SEE ALSO
 
-L<web::Controller::Root>, L<Catalyst>
+L<wf::Controller::Root>, L<Catalyst>
 
 =head1 AUTHOR
 

@@ -1,26 +1,26 @@
-package web::View::ttnw;
+package wf::View::ttnw;
 
 use strict;
 use base 'Catalyst::View::TT';
 
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
-	INCLUDE_PATH => [web->path_to('root')],
+	INCLUDE_PATH => [wf->path_to('root')],
 );
 
 =head1 NAME
 
-web::View::ttnw - TT without wrapper View for web 
+wf::View::ttnw - TT without wrapper View for wf 
 
 =head1 DESCRIPTION
 
-TT View for web. 
+TT View for wf. 
 
 =head1 AUTHOR
 
 =head1 SEE ALSO
 
-L<web>
+L<wf>
 
 ,,,
 

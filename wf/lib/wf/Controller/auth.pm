@@ -1,15 +1,15 @@
-package web::Controller::auth;
+package wf::Controller::auth;
 
 use strict;
 use warnings;
 use base 'Catalyst::Controller::FormBuilder';
 use Data::Dumper;
 
-__PACKAGE__->config( 'Controller::FormBuilder' => {form_path => File::Spec->catfile( web->path_to('root'))});
+__PACKAGE__->config( 'Controller::FormBuilder' => {form_path => File::Spec->catfile( wf->path_to('root'))});
 
 =head1 NAME
 
-web::Controller::auth - Catalyst Controller
+wf::Controller::auth - Catalyst Controller
 
 =head1 DESCRIPTION
 

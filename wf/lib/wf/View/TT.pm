@@ -1,27 +1,27 @@
-package web::View::TT;
+package wf::View::TT;
 
 use strict;
 use base 'Catalyst::View::TT';
 
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
-	INCLUDE_PATH => [web->path_to('root')],
+	INCLUDE_PATH => [wf->path_to('root')],
 	WRAPPER => 'wrapper.tt'
 );
 
 =head1 NAME
 
-web::View::TT - TT View for web
+wf::View::TT - TT View for wf
 
 =head1 DESCRIPTION
 
-TT View for web. 
+TT View for wf. 
 
 =head1 AUTHOR
 
 =head1 SEE ALSO
 
-L<web>
+L<wf>
 
 ,,,
 

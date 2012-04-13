@@ -2,8 +2,8 @@
 # expected.  you have been warned
 use inc::Module::Install;
 
-name 'web';
-all_from 'lib/web.pm';
+name 'wf';
+all_from 'lib/wf.pm';
 
 requires 'Catalyst::Runtime' => '5.7014';
 requires 'Catalyst::Plugin::ConfigLoader';

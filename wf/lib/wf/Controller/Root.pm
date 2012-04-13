@@ -1,4 +1,4 @@
-package web::Controller::Root;
+package wf::Controller::Root;
 
 use strict;
 use warnings;
@@ -12,7 +12,7 @@ __PACKAGE__->config->{namespace} = '';
 
 =head1 NAME
 
-web::Controller::Root - Root Controller for web
+wf::Controller::Root - Root Controller for wf
 
 =head1 DESCRIPTION
 
