@@ -56,7 +56,7 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 			},
 			store =>
 			{
-				class => 'Mailproc'
+				class => 'pp'
 			}
 			
 		}

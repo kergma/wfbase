@@ -1,4 +1,4 @@
-package Catalyst::Authentication::Store::Mailproc;
+package Catalyst::Authentication::Store::pp;
 
 use strict;
 use warnings;
@@ -35,7 +35,7 @@ sub find_user
 {
 	my ( $self, $authinfo, $c ) = @_;
 
-	my $model=$c->model('mailproc');
+	my $model=$c->model('ppdb');
 
 	my $p=$model->authinfo_password($authinfo) or return undef;
 	$authinfo->{password}=$p;

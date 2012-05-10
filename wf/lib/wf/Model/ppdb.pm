@@ -1,4 +1,4 @@
-package wf::Model::mailproc;
+package wf::Model::ppdb;
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ use packetproc;
 
 =head1 NAME
 
-wf::Model::mailproc - Catalyst Model
+wf::Model::ppdb - Catalyst Model
 
 =head1 DESCRIPTION
 
