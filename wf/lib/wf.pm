@@ -27,7 +27,7 @@ use Catalyst qw/
 my $rev='';
 '$Rev$' =~ /(\d+)/ and $rev=$1;
 
-our $VERSION = "0.$rev";
+our $VERSION = "2.$rev";
 
 use Cwd 'abs_path';
 use lib abs_path($0)=~'/dev/'?"/home/worker/dev/lib":"/home/worker/lib";
