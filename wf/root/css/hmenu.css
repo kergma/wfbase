@@ -11,8 +11,8 @@ float: left;
 list-style: none;
 margin: 0;
 padding: 0;
-width: 12em;
 float: left;
+margin-right: 2em;
 /*
 border-width: 1px;
 border-style: none solid solid none;
@@ -20,10 +20,12 @@ border-color: #ccc #888 #555 #bbb;
 */
 }
 
+
 #menu ul ul {
 border-width: 1px;
 border-style: solid;
 border-color: #ddd;
+min-width: 12em;
 }
 #menu li {
 /*font: bold 11px/16px arial, helvetica, sans-serif;*/
