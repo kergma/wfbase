@@ -278,6 +278,7 @@ where lo_so.r='логин сотрудника' and lo_so.v1=?
 	push @{$data{roles}}, split / +/,$data{description},
 
 	push @{$data{roles}}, $authinfo->{username};
+	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
 
 	$data{otd}='x';
 
