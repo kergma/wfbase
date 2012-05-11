@@ -10,6 +10,7 @@ use Digest::MD5;
 use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
 use packetproc;
+use db;
 
 
 
@@ -263,24 +264,19 @@ sub authinfo_data
 	$self->connect() or return undef;
 	my %data=%$authinfo;
 
-	my $r=$dbh->selectrow_hashref("select d1.v1 as password, d2.v2 as full_name from data d1 join data d2 on d1.r like 'пароль%' and d2.r like '%сущности' and d2.v1=d1.v2 where d1.v2=?",undef,$authinfo->{username});
+	my $r=$dbh->selectrow_hashref(qq/
+select lo_so.v2 as souid, lo_so.v1 as username, pw_lo.v1 as passord, fio_so.v1 as full_name, desc_so.v1 as description
+from data lo_so
+join data pw_lo on pw_lo.r like 'пароль %' and pw_lo.v2=lo_so.v1
+left join data fio_so on fio_so.r like 'ФИО %' and fio_so.v2=lo_so.v2
+left join data desc_so on desc_so.r like 'описание %' and desc_so.v2=lo_so.v2
+where lo_so.r='логин сотрудника' and lo_so.v1=?
+/
+,undef,$authinfo->{username});
 
 	%data=(%data,%$r) if $r;
+	push @{$data{roles}}, split / +/,$data{description},
 
-	my $sth=$dbh->prepare(qq/
-select d3.v1 as description
-from data d1
-join data d2 on d2.v1=d1.v2 and d2.r like '%сущности'
-join data d3 on d3.v2=d2.v2 and d3.r like 'описание сущности'
-where d1.v2=? and d1.r like 'пароль%'
-/
-);
-	$sth->execute($authinfo->{username}); 
-	while (my $r=$sth->fetchrow_hashref)
-	{
-		push @{$data{roles}}, split / /,$r->{description};
-	};
-	$sth->finish();
 	push @{$data{roles}}, $authinfo->{username};
 
 	$data{otd}='x';
