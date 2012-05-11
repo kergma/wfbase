@@ -24,7 +24,10 @@ use Catalyst qw/
 		Session::State::Cookie
 		Cache
 		/;
-our $VERSION = '0.01';
+my $rev='';
+'$Rev$' =~ /(\d+)/ and $rev=$1;
+
+our $VERSION = "0.$rev";
 
 use Cwd 'abs_path';
 use lib abs_path($0)=~'/dev/'?"/home/worker/dev/lib":"/home/worker/lib";

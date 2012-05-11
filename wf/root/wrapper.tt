@@ -29,7 +29,7 @@
 </head>
 <body>
 	
-<div style="visibility:hidden">.</div>
+<div style="text-align:right;color:lightgray">[% version %]</div>
 
 <div id="menu">
 
