@@ -265,7 +265,7 @@ sub authinfo_data
 	my %data=%$authinfo;
 
 	my $r=$dbh->selectrow_hashref(qq/
-select lo_so.v2 as souid, lo_so.v1 as username, pw_lo.v1 as passord, fio_so.v1 as full_name, desc_so.v1 as description
+select lo_so.v2 as souid, lo_so.v1 as username, pw_lo.v1 as password, fio_so.v1 as full_name, desc_so.v1 as description
 from data lo_so
 join data pw_lo on pw_lo.r like 'пароль %' and pw_lo.v2=lo_so.v1
 left join data fio_so on fio_so.r like 'ФИО %' and fio_so.v2=lo_so.v2
@@ -275,7 +275,7 @@ where lo_so.r='логин сотрудника' and lo_so.v1=?
 ,undef,$authinfo->{username});
 
 	%data=(%data,%$r) if $r;
-	push @{$data{roles}}, split / +/,$data{description},
+	push @{$data{roles}}, split / +/,$data{description};
 
 	push @{$data{roles}}, $authinfo->{username};
 	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
