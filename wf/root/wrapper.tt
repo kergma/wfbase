@@ -39,7 +39,7 @@
 
 [% IF c.check_any_user_role('отправляющий','разработчик') %]
 <ul>
-<li><a href="/upload/simple">Отправка</a></li>
+<li><a href="/upload/simple">Загрузка</a></li>
 </ul>
 [% END %]
 <ul>
