@@ -97,13 +97,10 @@
 [% END %]
 
 <ul>
-<li>Документация
+<li>Помощь
 <ul>
-	<li><a href="[% c.uri_for('/doc/html/инструкция') %]">Инструкция</a></li>
-	<li><a href="[% c.uri_for('/doc/html/глоссарий') %]">Глоссарий</a></li>
-[% IF c.check_user_roles('контролирующий') %]
-	<li><a href="[% c.uri_for('/doc/html/рукадмин') %]">Руководство администратора</a></li>
-[% END %]
+	<li><a href="http://trac.sfo.rosinv.ru">Вики</a></li>
+	<li><a href="http://trac.sfo.rosinv.ru/newticket">Сообщить ошибку</a></li>
 </ul>
 </li>
 </ul>
