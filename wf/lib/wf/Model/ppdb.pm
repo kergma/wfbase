@@ -189,6 +189,12 @@ sub get_rc_list
 	$self->connect() or return undef;
 	return cached_array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
 }
+sub get_pt_list
+{
+	my ($self)=@_;
+	$self->connect() or return undef;
+	return cached_array_ref($self,"select type from packets where type is not null group by type order by type");
+}
 
 sub get_field_list
 {
@@ -646,15 +652,13 @@ sub search_packets
 	$self->connect() or return undef;
 
 	my %where;
-	$where{"o.otd ~ ?"}=$cc->user->{otd};
+	$where{"coalesce(o.otd,'') ~ ?"}=$cc->user->{otd};
 	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
-	$where{"o.otd = ?"}=$filter->{otd} if $filter->{otd};
-	$where{"p.path = ?"}=$filter->{path} if $filter->{path};
-	$where{"p.reg_code = ?"}=$filter->{reg_code} if $filter->{reg_code};
-	$where{"lower(p.guid) ~ lower(?)"}=$filter->{guid} if $filter->{guid};
-	$where{"p.actno ~ ?"}=$filter->{actno} if $filter->{actno};
-	$where{"p.reqno ~ ?"}=$filter->{reqno} if $filter->{reqno};
-	$where{"exists (select 1 from log_old l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log_old where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
+	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
+	$where{"coalesce(o.otd) = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
+	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
+	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
@@ -662,16 +666,17 @@ sub search_packets
 	my $w=join (" and ",keys %where);
 	my $result=query($self,qq{
 select
-s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, file  as status_file, l.id as status_event
+s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, l.id as status_event,
+(select name from files where id=s.container) as container_name
 from (
-select p.id as packet_id, o.otd, reg_code,guid,path,actno,reqno
+select p.id as packet_id, o.otd, type, container
 from packets p
 left join orders o on o.id=p.order_id
 where $w
 order by p.id desc
 $limit
 ) s
-left join log_old l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log_old where refto='packets' and refid=l.refid and id>l.id)
+left join log l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
 },$filter,map($where{$_},keys %where)
 );
 	
