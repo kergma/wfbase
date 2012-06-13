@@ -222,7 +222,7 @@ sub get_event_list
 
 	my $reftow="";
 	$refto and $reftow="and refto=".$dbh->quote($refto);
-	return cached_array_ref($self,"select event from log_old where event is not null $reftow group by event order by event");
+	return cached_array_ref($self,"select event from log where event is not null $reftow group by event order by event");
 }
 
 sub get_who_list
@@ -239,10 +239,10 @@ sub get_oper_list
 	defined $cc or return undef;
 	$self->connect() or return undef;
 	return cached_array_ref($self,qq/
-select substring(d2.v2,E'^\\\\S+') as who
+select d2.v1 as who
 from data d1
-join data d2 on d2.v2=d1.v2 and d2.r='email сущности' 
-where d1.v1 ~ 'оператор|проверяющий' and d1.r ='описание сущности'
+join data d2 on d2.v2=d1.v2 and d2.r='ФИО сотрудника' 
+where d1.v1 ~ 'оператор|проверяющий' and d1.r ='описание сотрудника'
 order by who
 /);
 }
@@ -302,6 +302,34 @@ select v1 from data where r='отделение сущности' and v2=?
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
 	return \%data;
+}
+
+sub souid
+{
+	my ($self, $who)=@_;
+	$self->connect() or return undef;
+	return $who if $who=~/^[a-f0-9\-]{36}$/;
+
+	my $whocache=$cc->cache->get("whosouidmap");
+	return $whocache->{$who} if $whocache->{$who};
+	my $sth=db::prepare("select distinct v2 as souid from data where r='ФИО сотрудника' and v1=?");
+	$sth->execute($who);
+
+	$whocache->{$who}=$sth->fetchrow_hashref()->{souid};
+	delete $whocache->{$who} if $sth->fetchrow_hashref();
+
+	$cc->cache->set("whosouidmap") if $whocache->{$who};
+	return $whocache->{$who};
+}
+
+sub log_event
+{
+	my $self=shift;
+
+	my %data=scalar(@_)==1?%{$_[0]}:(@_);
+	my $event_id=packetproc::newid();
+	my $rv=db::do("insert into log (id,event,who,note,refto, refid, cause) values (?,?,?,?,?,?,?)",undef,$event_id,$data{event},$data{who},$data{note},$data{refto},$data{refid},$data{cause});
+	return $event_id if $rv;
 }
 
 sub read_order_data
