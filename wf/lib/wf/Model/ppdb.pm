@@ -653,6 +653,7 @@ sub search_packets
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
 	$where{"coalesce(o.otd) = ?"}=$filter->{otd} if $filter->{otd};
 	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
+	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and who in (select v2 from sdata where r='ФИО сотрудника' and lower(v1)~?))"}=$filter->{who} if $filter->{who};
 	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
 	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
