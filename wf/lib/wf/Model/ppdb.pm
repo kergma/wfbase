@@ -420,13 +420,10 @@ sub read_packet_data
 	my %data;
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
-(select who from log_old where refto='packets' and refid=p.id order by id desc limit 1) as who,
-(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log_old where refto='packets' and refid=p.id order by id limit 1) as accepted,
-(select event from log_old where refto='packets' and refid=p.id order by id desc limit 1) as status,
-(select to_char(date,'yyyy-mm-dd hh24:mi') from log_old where refto='packets' and refid=p.id order by id desc limit 1) as status_date,
-(select t.id from log_old l join timeline t on t.basename=l.file where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current,
-(select l.file from log_old l where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current_basename,
-(select t.file from log_old l join timeline t on t.basename=l.file where l.refto='packets' and l.refid=p.id and l.file is not null order by l.id desc limit 1) as current_file
+(select coalesce((select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1),who) as who from log l where refto='packets' and refid=p.id order by id desc limit 1) as who,
+(select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
+(select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date
 from packets p where id=?}
 ,undef,$id);
 	return undef unless $packet;
@@ -439,9 +436,8 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
-(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
-from log_old l
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1),who) as who,refto,refid,cause
+from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id = ?))
