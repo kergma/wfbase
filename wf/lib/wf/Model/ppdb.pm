@@ -222,7 +222,7 @@ sub get_event_list
 
 	my $reftow="";
 	$refto and $reftow="and refto=".$dbh->quote($refto);
-	return cached_array_ref($self,"select event from log where event is not null $reftow group by event order by event");
+	return cached_array_ref($self,"select event from log where event is not null $reftow and id>uuid_generate_v1o(now()-3*interval '1 month') group by event order by event");
 }
 
 sub get_who_list
