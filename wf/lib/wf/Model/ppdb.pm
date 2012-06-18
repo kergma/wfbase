@@ -619,23 +619,18 @@ sub search_orders
 	$self->connect() or return undef;
 	my $start=time;
 
-	my @where;
-	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd});
-	push @where, "o.id = ".$dbh->quote($filter->{order_id}) if $filter->{order_id};
-	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
-	push @where, "year = ".$dbh->quote($filter->{year}) if $filter->{year};
-	push @where, "ordno = ".$dbh->quote($filter->{ordno}) if $filter->{ordno};
-	push @where, "objno = ".$dbh->quote($filter->{objno}) if $filter->{objno};
-	push @where, sprintf "(select event from log_old where refto='orders' and refid=o.id order by id desc limit 1)=%s",$dbh->quote($filter->{ostatus}) if $filter->{ostatus};
-	push @where, sprintf "(select event from log_old where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1)=%s",$dbh->quote($filter->{pstatus}) if $filter->{pstatus};
-	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(%s))",$dbh->quote($filter->{address}) if $filter->{address};
-	push @where, sprintf "exists (select 1 from objects where id=o.object_id and lower(invent_number) ~ lower(%s))",$dbh->quote($filter->{invent_number}) if $filter->{invent_number};
-
-	$filter->{clate} !~ /^\s*[<>]?=?\s*-?\d+\s*$/ and $filter->{clate} !~ /^\s*between\s+-?\d+\s+and\s+-?\d+\s*$/i and $filter->{clate}='';
-	push @where, "(select event from log_old where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')" if $filter->{clate} or $filter->{olate};
-	push @where, "exists (select 1 from log_old where refto='orders' and refid=o.id and event='оплачен')" if $filter->{clate} or $filter->{olate};
-	push @where, sprintf "(current_date-o.kpeta) %s",$filter->{clate} if $filter->{clate};
-	push @where, sprintf q/extract(day from coalesce((select date from log_old where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-'15 @day'::interval)) %s/,$filter->{olate} if $filter->{olate};
+	my %where;
+	$where{"coalesce(o.otd,'') ~ ?"}=$cc->user->{otd};
+	$where{"o.id=?"}=$filter->{order_id} if $filter->{order_id};
+	$where{"o.otd=?"}=$filter->{otd} if $filter->{otd};
+	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who=? and o2.id=o.id)"}=$filter->{who} if $filter->{who}=~/^[a-f0-9\-]{36}$/;
+	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who in (select v2 from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)) and o2.id=o.id)"}=$filter->{who} if $filter->{who} and $filter->{who}!~/^[a-f0-9\-]{36}$/;;
+	$where{"o.year=?"}=$filter->{year} if $filter->{year};
+	$where{"o.ordno=?"}=$filter->{ordno} if $filter->{ordno};
+	$where{"o.objno=?"}=$filter->{objno} if $filter->{objno};
+	$where{"exists (select 1 from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and event=?)"}=$filter->{ostatus} if $filter->{ostatus};
+	$where{"exists (select 1 from log l join packets p on p.id=l.refid and l.refto='packets' where p.order_id=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and l.event=?)"}=$filter->{pstatus} if $filter->{pstatus};
+	$where{"exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(?))"}=$filter->{address} if $filter->{address};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
@@ -644,17 +639,20 @@ sub search_orders
 select o.*,
 j.address,
 j.invent_number,
-(select event from log_old where id=o.oevent) as ostatus,
-(select event from log_old where id=o.pevent) as pstatus,
-(select file from log_old where id=o.pevent) as pfile,
-(select id from log_old where id=o.pevent and event in ('отказ','УО','отзыв')) as pevent
+(
+select comma(distinct substring(who from E'^\\\\S+')) as who from (
+select (select v1 from sdata where v2=who and r='ФИО сотрудника') as who from log where refto='orders' and refid=o.id
+union  
+select (select v1 from sdata where v2=who and r='ФИО сотрудника') as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
+) s
+) as whos
 from (
 select
 o.*,
-(select max(id) from log_old where refto='orders' and refid=o.id) as oevent,
-(select max(id) from log_old where refto='packets' and refid in (select id from packets where order_id=o.id)) as pevent,
-current_date-(select o.kpeta where (select event from log_old where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as clate,
-(select cast(extract(day from coalesce((select date from log_old where event='передача' and refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1),current_date)-(o.kpeta-15)) as int)  where (select event from log_old where refto='orders' and refid=o.id order by id desc limit 1) not in ('выдача','закрыт','приостановлен')) as olate
+(select (id,event)::record from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id<l.refid)) as oevent,
+(
+select array_agg((l.id,l.event)::record) as a from log l where refto='packets' and refid in (select id from packets where order_id=o.id) and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)
+) as pevents
 from (
 select * from orders o
 where
@@ -663,7 +661,7 @@ order by o.id desc %s
 ) o
 ) o
 left join objects j on j.id=o.object_id
-},join(" and ",@where),$limit),$filter);
+},join(" and ",keys %where),$limit),$filter,map($where{$_},keys %where));
 	
 	return $result;
 
