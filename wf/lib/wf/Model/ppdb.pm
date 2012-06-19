@@ -230,7 +230,7 @@ sub get_who_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	return cached_array_ref($self,"select who from log_old where who is not null group by who order by who");
+	return cached_array_ref($self,"select (select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who from log l where who is not null group by who order by who");
 }
 
 sub get_oper_list
@@ -487,59 +487,37 @@ sub read_event_data
 
 	my %data;
 	my $event=$dbh->selectrow_hashref(qq{
-select * from log_old l where id=?}
+select * from log l where id=?}
 ,undef,$id);
 	return undef unless $event;
 	$data{event}=$event;
 
-	my $order=$dbh->selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log_old where id=?)",undef,$event->{id});
+	my $order=$dbh->selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
 	$data{order}=$order;
 
-	my %orders=(elements=>[]);
-	my $sth=$dbh->prepare(qq{
-select o.*,
-(select to_char(date,'yyyy-mm-dd') from log_old where event='принят' and order_id=o.id order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log_old where event='оплачен' and order_id=o.id order by id desc limit 1) as paid
-from orders o where object_id in (select refid from log_old where refto='objects' and id=?) order by id desc
-});
-	$sth->execute($id);
-	while (my $r=$sth->fetchrow_hashref())
-	{
-		push @{$orders{elements}},$r;
-	};
-	$sth->finish;
-	$data{orders}=\%orders;
 
-	my $packet=$dbh->selectrow_hashref("select * from packets where id=(select refid from log_old where refto='packets' and id=?)",undef,$event->{id});
+	my $packet=$dbh->selectrow_hashref("select * from packets where id=(select refid from log where refto='packets' and id=?)",undef,$event->{id});
 	$data{packet}=$packet;
 
-	$sth=$dbh->prepare("select * from packets where order_id in (select refid from log_old where refto='orders' and id=? union select id from orders where object_id=(select refid from log_old where refto='objects' and id=?)) order by id desc");
-	$sth->execute($id,$id);
-	my %packets=(elements=>[]);
-	while (my $r=$sth->fetchrow_hashref())
-	{
-		push @{$packets{elements}},$r;
-	};
-	$sth->finish;
-	$data{packets}=\%packets;
-
-	my $object=$dbh->selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log_old l where id=?)",undef,$id);
+	my $object=$dbh->selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
 	$data{object}=$object;
 
-	my $order_ids=join(',',grep($_,map($_->{id},@{$orders{elements}}),$order->{id}),0);
-	my $packet_ids=join(',',grep($_,map($_->{id},@{$packets{elements}}),$packet->{id}),0);
+	my $orders=$data{orders}->{elements}=db::selectall_arrayref(qq{select * from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
+	my $packets=$data{packets}->{elements}=db::selectall_arrayref("select * from packets where order_id in (select refid from log where refto='orders' and id=? union select id from orders where object_id=(select refid from log where refto='objects' and id=?)) order by id desc",{Slice=>{}},$id,$id);
 
-	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
-(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
-from log_old l
+	push @$orders,{id=>undef};
+	push @$packets,{id=>undef};
+
+	my $sth=$dbh->prepare(sprintf(qq/
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who,refto,refid, cause
+from log l
 where id=?
 or (refto=? and refid=?)
-or (refto='orders' and refid in ($order_ids))
-or (refto='packets' and refid in ($packet_ids))
+or (refto='orders' and refid in (%s))
+or (refto='packets' and refid in (%s))
 or (refto='objects' and refid=?)
-order by id desc/);
-	$sth->execute($event->{id},$event->{refto},$event->{refid},$object->{id});
+order by id desc/,join(',',map {'?'} @$orders),join(',',map {'?'} @$packets)));
+	$sth->execute($event->{id},$event->{refto},$event->{refid},map ($_->{id},@$orders),map ($_->{id}, @$packets),$object->{id});
 	my %events=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
@@ -547,6 +525,9 @@ order by id desc/);
 	};
 	$sth->finish;
 	$data{events}=\%events;
+
+	@$orders=grep {$_->{id}} @$orders;
+	@$packets=grep {$_->{id}} @$packets;
 	return \%data;
 }
 
@@ -717,7 +698,7 @@ sub search_events
 	push @where, "l.date > ".$dbh->quote($filter->{from}) if $filter->{from};
 	push @where, "l.date <= ".$dbh->quote($filter->{to}) if $filter->{to};
 	push @where, "l.event = ".$dbh->quote($filter->{event}) if $filter->{event};
-	push @where, "l.who = ".$dbh->quote($filter->{who}) if $filter->{who};
+	push @where, "l.who  in (select v2 from sdata where r='ФИО сотрудника' and v1=".$dbh->quote($filter->{who}).")" if $filter->{who};
 	push @where, sprintf "lower(l.note) ~ lower(%s)", $dbh->quote($filter->{note}) if $filter->{note};
 	push @where, "l.refto = ".$dbh->quote($filter->{refto}) if $filter->{refto};
 	push @where, "l.refid = ".$dbh->quote($filter->{refid}) if $filter->{refid};
@@ -730,14 +711,14 @@ sub search_events
 
 	my $result=query($self,qq{
 select
-l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.file
-from log_old l
+l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
+from log l
 left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where l.id in
 (
 select l.id
-from log_old l
+from log l
 left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
 where
