@@ -99,8 +99,9 @@
 <ul>
 <li>Помощь
 <ul>
-	<li><a href="http://trac.sfo.rosinv.ru">Вики</a></li>
-	<li><a href="http://trac.sfo.rosinv.ru/newticket">Сообщить ошибку</a></li>
+	<li><a href="http://trac.sfo.rosinv.ru/wiki/Новости">Новости</a></li>
+	<li><a href="http://trac.sfo.rosinv.ru/wiki/Инструкции">Инструкции</a></li>
+	<li><a href="http://trac.sfo.rosinv.ru/newticket">Сообщить об ошибке</a></li>
 </ul>
 </li>
 </ul>
