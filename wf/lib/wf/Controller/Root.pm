@@ -51,7 +51,12 @@ Attempt to render a view, if needed.
 
 =cut
 
-sub end : ActionClass('RenderView') {}
+sub end : ActionClass('RenderView')
+{
+	my ($self, $c) = @_;
+	use Data::Dumper;
+	$c->{stash}->{data}->{dump}=Dumper($c->stash->{data});
+}
 
 sub auto :Private
 {

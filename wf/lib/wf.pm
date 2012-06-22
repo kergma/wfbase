@@ -40,10 +40,11 @@ our $VERSION = '0.01';
 # local deployment.
 
 __PACKAGE__->config(
-    name => 'wf',
-    # Disable deprecated behavior needed by old applications
-    disable_component_resolution_regex_fallback => 1,
-    enable_catalyst_header => 1, # Send X-Catalyst header
+	name => 'wf',
+	# Disable deprecated behavior needed by old applications
+	disable_component_resolution_regex_fallback => 1,
+	enable_catalyst_header => 1, # Send X-Catalyst header
+	default_view => 'html'
 );
 
 __PACKAGE__->config->{'Plugin::Authentication'} =

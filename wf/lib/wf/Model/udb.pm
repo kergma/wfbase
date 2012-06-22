@@ -51,7 +51,7 @@ sub authinfo_data
 
 	my $r=db::selectrow_hashref(qq/
 select fio_so.v2 as souid, lo_ac.v1 as username, pw_ac.v1 as password,fio_so.v1 as fio,
-(select array_agg(distinct v1) from data where r='описание сотрудника' and v2=fio_so.v2) as description
+(select join(', ', v1) from data where r='описание сотрудника' and v2=fio_so.v2) as description
 from data fio_so 
 join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2
 join data lo_ac on lo_ac.r='имя входа учётной записи' and lo_ac.v2=ac_so.v1
@@ -61,9 +61,8 @@ where fio_so.r='ФИО сотрудника' and lo_ac.v1=?
 	%data=(%data,%$r) if $r;
 
 	push @{$data{roles}}, $authinfo->{username};
-	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
+	push @{$data{roles}}, split /, */, $data{description};
 
-	$data{otd}='x';
 
 	my $roles="'norole'";
 	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
