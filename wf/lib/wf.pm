@@ -17,8 +17,13 @@ use Catalyst::Runtime 5.80;
 #                 directory
 
 use Catalyst qw/
-    ConfigLoader
-    Static::Simple
+	ConfigLoader
+	Static::Simple
+	Authentication
+	Authorization::Roles
+	Session
+	Session::Store::FastMmap
+	Session::State::Cookie
 /;
 
 extends 'Catalyst';
@@ -41,6 +46,27 @@ __PACKAGE__->config(
     enable_catalyst_header => 1, # Send X-Catalyst header
 );
 
+__PACKAGE__->config->{'Plugin::Authentication'} =
+{
+	use_session => 1,
+	realms =>
+	{
+		default =>
+		{
+			credential =>
+			{
+				class => 'Password',
+				password_field=>'password',
+				password_type=>'clear'
+			},
+			store =>
+			{
+				class => 'udb'
+			}
+
+		}
+	}
+};
 # Start the application
 __PACKAGE__->setup();
 

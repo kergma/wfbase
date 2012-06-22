@@ -27,6 +27,50 @@ it under the same terms as Perl itself.
 
 __PACKAGE__->meta->make_immutable;
 
+sub authinfo_password
+{
+	my ($self,$authinfo)=@_;
+
+	my $r=db::selectrow_hashref(qq{
+select pw_ac.v1 as passw
+from data lo_ac
+join data pw_ac on pw_ac.v2=lo_ac.v2 and pw_ac.r like 'пароль % учётной записи'
+where lo_ac.r='имя входа учётной записи' and lo_ac.v1=?
+},undef,$authinfo->{username});
+	$r or return undef;
+	return $r->{passw};
+}
+
+
+
+sub authinfo_data
+{
+	my ($self,$authinfo)=@_;
+
+	my %data=%$authinfo;
+
+	my $r=db::selectrow_hashref(qq/
+select fio_so.v2 as souid, lo_ac.v1 as username, pw_ac.v1 as password,fio_so.v1 as fio,
+(select array_agg(distinct v1) from data where r='описание сотрудника' and v2=fio_so.v2) as description
+from data fio_so 
+join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2
+join data lo_ac on lo_ac.r='имя входа учётной записи' and lo_ac.v2=ac_so.v1
+join data pw_ac on pw_ac.r like 'пароль %' and pw_ac.v2=ac_so.v1
+where fio_so.r='ФИО сотрудника' and lo_ac.v1=?
+/,undef,$authinfo->{username});
+	%data=(%data,%$r) if $r;
+
+	push @{$data{roles}}, $authinfo->{username};
+	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
+
+	$data{otd}='x';
+
+	my $roles="'norole'";
+	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
+
+	return \%data;
+}
+
 package db;
 
 my $dbh;
