@@ -1,112 +1,49 @@
 package wf;
+use Moose;
+use namespace::autoclean;
 
-use strict;
-use warnings;
+use Catalyst::Runtime 5.80;
 
-use Catalyst::Runtime '5.70';
-
-# Set flags and add plugins for the application
+# Set flags and add plugins for the application.
+#
+# Note that ORDERING IS IMPORTANT here as plugins are initialized in order,
+# therefore you almost certainly want to keep ConfigLoader at the head of the
+# list if you're using it.
 #
 #         -Debug: activates the debug mode for very useful log messages
 #   ConfigLoader: will load the configuration from a Config::General file in the
 #                 application's home directory
-# Static::Simple: will serve static files from the application's root 
+# Static::Simple: will serve static files from the application's root
 #                 directory
 
-use parent qw/Catalyst/;
 use Catalyst qw/
-                ConfigLoader
-                Static::Simple
-		Authentication
-		Authorization::Roles
-		Session
-		Session::Store::FastMmap
-		Session::State::Cookie
-		Cache
-		/;
+    ConfigLoader
+    Static::Simple
+/;
 
-our $base=__PACKAGE__->path_to('');
-my $rev=`svnversion $base/..`;
-chomp $rev;
+extends 'Catalyst';
 
-our $VERSION = "2.$rev";
+our $VERSION = '0.01';
 
-use Cwd 'abs_path';
-use lib abs_path($0)=~'/dev/'?"/home/worker/dev/lib":"/home/worker/lib";
-use FindBin;
-use lib "$FindBin::Bin/../lib";
-# Configure the application. 
+# Configure the application.
 #
 # Note that settings in wf.conf (or other external
 # configuration file that you set up manually) take precedence
 # over this when using ConfigLoader. Thus configuration
 # details given here can function as a default configuration,
-# with a external configuration file acting as an override for
+# with an external configuration file acting as an override for
 # local deployment.
 
-__PACKAGE__->config( name => 'wf', default_view => 'TT' );
-__PACKAGE__->config( uploadtmp => '/home/worker/tmp');
-
-__PACKAGE__->config->{'Plugin::Authentication'} = 
-{ 
-	use_session => 1,
-	realms =>
-	{
-		default =>
-		{
-			credential =>
-			{
-				class => 'Password',
-				password_field=>'password',
-				password_type=>'clear'
-			},
-			store =>
-			{
-				class => 'pp'
-			}
-			
-		}
-	}
-};
-
-__PACKAGE__->config->{"Plugin::Cache"} =
-{
-	backends =>
-	{
-		fast=>
-		{
-			class => "Cache::FastMmap",
-			share_file => '/tmp/sharefile-wfcache',
-			expire_time => 300,
-			enable_stats => 1,
-			page_size => '128k',
-		},
-		big=>
-		{
-			#class => "Cache::Memcached",
-			#servers=>['127.0.0.1:11211'],
-
-			class => "Cache::FileCache",
-			cache_root=>'/storage/tmp/wfcache',
-			default_expires_in=>300,
-		},
-	},
-	profiles =>
-	{
-		fast=>{backend=>"fast"},
-		big=>{backend=>"big"},
-	},
-};
-
-__PACKAGE__->config->{"Plugin::Cache"}->{backend}=__PACKAGE__->config->{"Plugin::Cache"}->{backends}->{fast};
-
-__PACKAGE__->config->{"Plugin::Session"} =
-{
-	unlink_on_exit=>0
-};
+__PACKAGE__->config(
+    name => 'wf',
+    # Disable deprecated behavior needed by old applications
+    disable_component_resolution_regex_fallback => 1,
+    enable_catalyst_header => 1, # Send X-Catalyst header
+);
 
 # Start the application
 __PACKAGE__->setup();
+
 
 =head1 NAME
 
@@ -126,11 +63,11 @@ L<wf::Controller::Root>, L<Catalyst>
 
 =head1 AUTHOR
 
-,,,
+Pushkinsv
 
 =head1 LICENSE
 
-This library is free software, you can redistribute it and/or modify
+This library is free software. You can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
