@@ -4,22 +4,16 @@
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta http-equiv="cache-control" content="no-cache">
-<title>[% heading %] [% heading and " - " %] [% template.title or "Обработка пакетов в ООД" %]</title>
+<title>[% heading %] [% heading and " - " %] [% template.title or "БД пользователей" %]</title>
 
 <!--
 <link rel="stylesheet" href="/css/blueprint/screen.css" type="text/css" media="screen, projection">
 <link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
-<script type="text/javascript" src="/static/js/jquery-ui-1.8.23.custom.min.js"></script>
-<link rel="stylesheet" href="/css/jquery-ui-1.8.23.custom.css" />
-<link rel="stylesheet" href="/css/hmenu.css" />
 -->
 
-<script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
-
-<link rel="stylesheet" href="/css/common.css" />
+<link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" />
 
 <!--[if IE]>
-
 <style type="text/css" media="screen">
 	#menu{float:none;} /* This is required for IE to avoid positioning bug when placing content first in source. */
 	/* IE Menu CSS */
@@ -34,109 +28,24 @@
 
 </head>
 <body>
+	
+<div style="text-align:right;color:lightgray">[% version %]</div>
 
-[%IF c.check_any_user_role('администратор')%]
-<div style="text-align: right; width: 100%">
-<div style="text-align:right;color:lightgray">
-[%present%]
-[% IF c.check_any_user_role('разработчик') %][% version %][% END %]
+<div id="menu">
+
+<div id="auth" style="float:right">
+	<div title="[% IF c.user.fio %][% c.user.fio %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.souid %]">[% c.user.username %] (<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)</div>
 </div>
-</div>
-[%END%]
 
-[%IF news%]
-[%INCLUDE notifier.tt%]
-[%END%]
+<ul>
+<li>Тест
+<ul>
+	<li><a href="/sys/test">тест</a></li>
+</ul>
+</li>
+</ul>
 
-<div><!-- main-menu -->
-	<div id="auth">
-		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
-		<div id="logout"><a href="/auth/logout">выход</a></div>
-	</div>
-	<ul id="main-menu">
-		[% IF c.check_any_user_role('пользователь','оператор','диспетчер','администратор') %]
-		<li><a href="#">Загрузка</a>
-			<ul>
-				<!--<li><a href="/upload/packet">Пакет</a></li>-->
-				<li><a href="/reqproc/create">Запрос сведений</a></li>
-				<li><a href="/ordproc/create">Заказ</a></li>
-			</ul>
-		</li>
-		[% END %]
-		[% IF c.check_any_user_role('пользователь','оператор','диспетчер','администратор') %]	
-		<li><a href="#">Обработка</a>
-			<ul>
-			[% IF c.check_any_user_role('пользователь') %]	
-				<li><a href="/ordproc/conduct">Заказы</a></li>
-			[%END%]
-			[% IF c.check_any_user_role('оператор') %]	
-				<li><a href="/ordproc/tp">Техпланы</a></li>
-			[%END%]
-			[% IF c.check_any_user_role('диспетчер') %]	
-				<li><a href="/ordproc/dispatch">Диспетчеризация</a></li>
-			[%END%]
-			[% IF c.check_any_user_role('запрашивающий') %]	
-				<li><a href="/reqproc/list">Сведения ГКН</a></li>
-			[%END%]
-			</ul>
-		</li>
-		[% END %]
-		<li><a href="#">Просмотр</a>
-			[% IF c.check_any_user_role('пользователь','оператор','диспетчер','администратор') %]
-			<ul>
-				<li><a href="/search/objects">Объекты</a></li>
-				<li><a href="/search/orders">Заказы</a></li>
-				<li><a href="/search/packets">Пакеты</a></li>
-				<li><a href="/search/events">События</a></li>
-				[% IF c.check_any_user_role('диспетчер','администратор') %]
-				<li><a href="/query/cat">Каталог</a></li>
-				[%END%]
-			</ul>
-			[% END %]
-		</li>
-
-		[% IF c.check_any_user_role('xxx') %]	
-		<li><a href="#">Добавить</a>
-			<ul>
-				<li><a href="/edit/insert/objects?source=web">Объект</a></li>
-				<li><a href="/edit/insert/orders">Заказ</a></li>
-				<li><a href="/edit/insert/packets">Пакет</a></li>
-				<li><a href="/edit/insert/log?who=[% c.user.username %]">Событие</a></li>
-			</ul>
-		</li>
-		[% END %]
-
-		[% IF c.check_any_user_role('администратор','разработчик') %]
-		<li><a href="#">Управление</a>
-			<ul>
-				[% IF c.check_any_user_role('администратор','разработчик') %]
-				<li><a href="/export/status">Передача пакетов</a></li>
-				<li><a href="/export/history">История передач</a></li>
-				[% END %]
-				<li><a href="/dispatch/queue">Очередь обработки</a></li>
-				[% IF c.check_any_user_role('контролирующий','разработчик') %]
-				<li><a href="/query/edit">Редактор</a></li>
-				<li><a href="/query/cache">Извлечения</a></li>
-				<li><a href="/task/status">Текущие задачи</a>
-					<ul>
-						<li><a href="/task/schedule?задача=передача запросов сведений об окс&confirm=1">Передать запросы сведений об ОКС</a></li>
-					</ul>
-				</li>
-				[% END %]
-			</ul>
-		</li>
-		[% END %]
-
-		<li><a href="#">Помощь</a>
-			<ul>
-				<li><a href="http://trac.sfo.rosinv.ru/wiki/Новости">Новости</a></li>
-				<li><a href="http://trac.sfo.rosinv.ru/wiki/Инструкции">Инструкции</a></li>
-				<li><a href="http://trac.sfo.rosinv.ru/newticket">Сообщить об ошибке</a></li>
-				<li><a href="/storage/file/1e202006-1369-8941-ae73-bf7299eab5be">Техподдержка</a></li>
-			</ul>
-		</li>
-	</ul>
-</div> <!-- end menu -->
+</div><!-- end menu -->
 
 <div id="header">
     [%# Insert the page title -%]
@@ -148,15 +57,15 @@
     [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
-[% IF dump %]
+[% IF c.check_user_roles('Разработчик') %]
 <pre>
-[% dump %]
+[% data.dump %]
 </pre>
-[% END %][%# check_user_roles('разработчик') %]
+[% END %][%# check_user_roles('Разработчик') %]
 </div><!-- end content -->
 
 <div id="footer">
-	<br><img src="/static/images/rosinv-logo.png"/>
+<br><img src="/rosinv-logo.png"/>
 </div>
 
 </body>
