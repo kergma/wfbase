@@ -1,0 +1,27 @@
+[%# vim: set filetype=tt2: -%]
+[%IF form%]
+[% form.render %]
+[%END%][%# form %]
+[% sections=data.values %]
+[% FOREACH s=sections %]
+[% fields=s.header%]
+[% IF s.display_.order_%][% fields=s.display_.order_%][%END%]
+[% NEXT UNLESS fields %]
+[% IF s.query%]
+Число строк [% s.rows.size %], извлечено [% s.retrievedf %] ([% s.duration %] с)
+[% END %][%# query %]
+<table border="1">
+[% IF s.rows %]
+<tr>
+[% FOREACH f=fields%]<td>[%IF s.display_.$f%][%s.display_.$f%][%ELSE%][%f%][%END%]</td>[%END%]
+</tr>
+[% FOREACH r=s.rows%]
+<tr>
+[% FOREACH f=fields%]<td>[%r.$f%]</td>[%END%]
+</tr>
+[% END %][%# rows %]
+[% ELSE %][%rows or hash %]
+here hash
+[% END %]
+</table>
+[% END %][%# sections %]

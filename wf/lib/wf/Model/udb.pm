@@ -5,6 +5,9 @@ use namespace::autoclean;
 extends 'Catalyst::Model';
 
 use DBI;
+use Digest::MD5;
+use Encode;
+use Date::Format;
 
 =head1 NAME
 
@@ -26,6 +29,17 @@ it under the same terms as Perl itself.
 =cut
 
 __PACKAGE__->meta->make_immutable;
+
+
+my $cc;
+
+sub ACCEPT_CONTEXT
+{
+	my ($self,$c,@args)=@_;
+
+	$cc=$c;
+	return $self;
+}
 
 sub authinfo_password
 {
@@ -70,6 +84,83 @@ where fio_so.r='ФИО сотрудника' and lo_ac.v1=?
 	return \%data;
 }
 
+sub search_records
+{
+	my ($self,$filter)=@_;
+
+	my %where=('1=?',1);
+	$where{'recid=?'}=$filter->{recid} if $filter->{recid};
+	$where{'lower(defvalue)~lower(?)'}=$filter->{defvalue} if $filter->{defvalue};
+	$where{'lower(defvalue)~lower(?)'}=~s/ +/\.\*/ if $filter->{defvalue};
+	$where{'rectype=?'}=$filter->{rectype} if $filter->{rectype};
+	my $limit=$filter->{limit}||0;
+	$limit+0 or $limit="";
+	$limit and $limit="limit $limit";
+	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),values %where);
+}
+sub rectypes
+{
+	my ($self)=@_;
+	return cached_array_ref($self,qq/select distinct rectype from recv where rectype is not null order by 1/);
+}
+
+sub init_schema
+{
+	db::do(qq/
+create or replace view recv as
+select distinct
+rec.v2 as recid,
+def.v1 as defvalue,
+case when def.r ='наименование списка' then 'Список' when def.r ='наименование ИС' then 'Информационная система' when def.r='наименование структурного подразделения' then 'Структурное подразделение' when def.r='ФИО сотрудника' then 'Сотрудник' when def.r like '%учётной записи%' then 'Учётная запись' else null end as rectype
+from  data rec
+left join data def on def.v2=rec.v2 and (def.r like 'наименование %' or def.r like 'ФИО %' or def.r like 'имя входа учётной записи')
+/);
+}
+
+sub cached_array_ref
+{
+	my ($self, $q, @values)=@_;
+
+	my $md5=Digest::MD5->new;
+	$md5->add($q);
+	$md5->add($_) foreach @values;
+	my $qkey=$md5->hexdigest();
+
+	my $result=$cc->cache->get("aref-".$qkey);
+	unless ($result)
+	{
+		$result=db::selectall_arrayref($q,{Slice=>{}},@values);
+		@$result=map {values %$_} @$result if keys(%{$result->[0]})==1;
+		$cc->cache->set("aref-".$qkey,$result);
+	};
+	return $result;
+}
+
+sub read_table
+{
+	my $self=shift;
+	my $query=shift;
+	my @values=@_;
+
+	my $start=time;
+
+	my $sth=db::prepare($query);
+	$sth->execute(@values);
+
+	my %result=(query=>$query,values=>[@values],header=>[map(encode("utf8",$_),@{$sth->{NAME}})],rows=>[]);
+
+	while(my $r=$sth->fetchrow_hashref)
+	{
+		push @{$result{rows}}, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+	};
+	$sth->finish;
+
+	$result{duration}=time-$start;
+	$result{retrievedf}=$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',time);
+
+	return \%result;
+}
+
 package db;
 
 my $dbh;
@@ -97,6 +188,7 @@ sub connect
 		wf->config->{dbauth}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;
+	wf::Model::udb::init_schema();
 }
 
 

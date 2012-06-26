@@ -24,11 +24,12 @@ use Catalyst qw/
 	Session
 	Session::Store::FastMmap
 	Session::State::Cookie
+	Cache
 /;
 
 extends 'Catalyst';
 
-our $VERSION = '0.01';
+our $VERSION = "0.".`svnversion -n ${\(__PACKAGE__->path_to(''))}`;
 
 # Configure the application.
 #
@@ -67,6 +68,17 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 
 		}
 	}
+};
+
+__PACKAGE__->config->{"Plugin::Cache"} =
+{
+	backend =>
+	{
+		class => "Cache::FastMmap",
+		expire_time => 300,
+		enable_stats => 1,
+		page_size => '1024k'
+	},
 };
 # Start the application
 __PACKAGE__->setup();
