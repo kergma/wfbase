@@ -627,7 +627,7 @@ select (select v1 from sdata where v2=who and r='ФИО сотрудника') a
 from (
 select
 o.*,
-(select (id,event)::record from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id<l.refid)) as oevent,
+(select (id,event)::record from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id<l.id)) as oevent,
 (
 select array_agg((l.id,l.event)::record) as a from log l where refto='packets' and refid in (select id from packets where order_id=o.id) and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)
 ) as pevents
