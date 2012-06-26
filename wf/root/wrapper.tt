@@ -38,9 +38,9 @@
 </div>
 
 <ul>
-<li>Тест
+<li>Просмотр
 <ul>
-	<li><a href="/sys/test">тест</a></li>
+	<li><a href="/rec/search">Записи</a></li>
 </ul>
 </li>
 </ul>
