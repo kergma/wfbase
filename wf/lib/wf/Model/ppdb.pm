@@ -293,8 +293,6 @@ where lo_so.r='логин сотрудника' and lo_so.v1=?
 	my $otds=$dbh->selectcol_arrayref(qq/
 select v1 from data where r='отделение сотрудника' and v2=?
 union
-select v1 from data where r='отделение роли' and v2 in ($roles)
-union
 select otd from orders group by otd having otd = ? 
 union
 select v1 from data where r='отделение сущности' and v2=?
