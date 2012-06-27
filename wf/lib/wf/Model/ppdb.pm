@@ -286,7 +286,7 @@ where lo_so.r='логин сотрудника' and lo_so.v1=?
 	push @{$data{roles}}, $authinfo->{username};
 	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
 
-	$data{otd}='x';
+	$data{otd}='';
 
 	my $roles="'norole'";
 	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
