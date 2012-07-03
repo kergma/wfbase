@@ -43,6 +43,7 @@ use lib "$FindBin::Bin/../../lib";
 # local deployment.
 
 __PACKAGE__->config( name => 'wf', default_view => 'TT' );
+__PACKAGE__->config( uploadtmp => '/home/worker/tmp');
 
 __PACKAGE__->config->{'Plugin::Authentication'} = 
 { 
