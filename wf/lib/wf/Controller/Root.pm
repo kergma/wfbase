@@ -57,7 +57,7 @@ sub begin :Private
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	eval {	$c->{stash}->{form}=$c->controller->formbuilder if defined $c->controller->formbuilder; };
+	$c->{stash}->{form}=$c->controller->formbuilder if ref($c->action)=~ /FormBuilder/;
 	use Data::Dumper;
 	$c->{stash}->{data}->{dump}=Dumper($c->stash->{data});
 }

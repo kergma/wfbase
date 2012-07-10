@@ -98,11 +98,28 @@ sub search_records
 	$limit and $limit="limit $limit";
 	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),values %where);
 }
+sub read_record
+{
+	my ($self,$id)=@_;
+	return db::selectall_arrayref(qq/
+select s.*,
+(select comma(distinct defvalue) from recv where recid<>? and (recid=s.v1 or recid=s.v2)) as refdef,
+(select comma(distinct rectype) from recv where recid<>? and (recid=s.v1 or recid=s.v2)) as reftype 
+from
+(select id,v1,r,null as v2 from data where v2=? union select id,null as v1,r,v2 from data where v1=?) s
+/,{Slice=>{}},$id,$id,$id,$id);
+
+}
 sub rectypes
 {
 	my ($self)=@_;
 	return cached_array_ref($self,qq/select distinct rectype from recv where rectype is not null order by 1/);
 }
+sub recdef
+{
+	my ($self,$id)=@_;
+	return db::selectrow_hashref(qq/select * from recv where recid=?/,undef,$id);
+};
 
 sub init_schema
 {
