@@ -115,11 +115,50 @@ sub rectypes
 	my ($self)=@_;
 	return cached_array_ref($self,qq/select distinct rectype from recv where rectype is not null order by 1/);
 }
-sub recdef
+sub read_row
 {
 	my ($self,$id)=@_;
-	return db::selectrow_hashref(qq/select * from recv where recid=?/,undef,$id);
-};
+	return db::selectrow_hashref(qq/
+select s.*,
+(select comma(distinct defvalue) from recv where recid=s.v1) as def1,
+(select comma(distinct rectype) from recv where recid=s.v1) as rt1,
+(select comma(distinct defvalue) from recv where recid=s.v2) as def2,
+(select comma(distinct rectype) from recv where recid=s.v2) as rt2
+from data s where id=?
+/,undef,$id);
+
+}
+
+sub datarow
+{
+	my ($self,$id)=@_;
+	return db::selectrow_hashref(qq/select * from data where id=?/,undef,$id);
+}
+sub recdef
+{
+	my ($self,$recid)=@_;
+	my $r=db::selectrow_arrayref(qq/select defvalue,rectype from recv where recid=?/,undef,$recid);
+	return (undef,undef) unless $r;
+	return @$r;
+}
+
+sub update_row
+{
+	my ($selft,$id,$v1,$r,$v2)=@_;
+	return db::do("update data set v1=?,r=?,v2=? where id=?",undef,$v1,$r,$v2,$id);
+}
+sub delete_row
+{
+	my ($selft,$id)=@_;
+	return db::do("delete from data where id=?",undef,$id);
+}
+
+
+sub relations
+{
+	my ($self)=@_;
+	return cached_array_ref($self,qq/select distinct r from data order by 1/);
+}
 
 sub init_schema
 {
@@ -191,6 +230,11 @@ for my $funame (qw/do prepare selectrow_arrayref selectrow_hashref selectall_arr
 		Catalyst::Exception->throw($DBI::errstr) if $DBI::errstr;
 		return $rv;
 	};
+}
+
+sub errstr
+{
+	return $DBI::errstr;
 }
 
 sub connect

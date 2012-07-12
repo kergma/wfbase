@@ -4,6 +4,7 @@
 [%END%][%# form %]
 [% sections=data.values %]
 [% FOREACH s=sections %]
+[% IF s.text%]<div>[%s.text%]</div>[%END%]
 [% fields=s.header%]
 [% IF s.display_.order_%][% fields=s.display_.order_%][%END%]
 [% NEXT UNLESS fields %]
