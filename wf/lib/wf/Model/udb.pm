@@ -132,6 +132,7 @@ from data s where id=?
 sub datarow
 {
 	my ($self,$id)=@_;
+	return undef unless $id;
 	return db::selectrow_hashref(qq/select * from data where id=?/,undef,$id);
 }
 sub recdef
@@ -151,6 +152,14 @@ sub delete_row
 {
 	my ($selft,$id)=@_;
 	return db::do("delete from data where id=?",undef,$id);
+}
+
+sub new_row
+{
+	my ($selft,$v1,$r,$v2)=@_;
+	my $rv=db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$v1,$r,$v2);
+	return undef unless $rv;
+	return db::selectval_scalar("select currval('data_id_seq')");
 }
 
 

@@ -3,8 +3,15 @@
 [% form.render %]
 [%END%][%# form %]
 [% sections=data.values %]
+[%IF data.display_.order_%]
+[% sections=[]%]
+[% FOREACH s=data.display_.order_ %]
+[% sections.push(data.$s)%]
+[% END%][%# data.displat_order_ %]
+[%END%][%#data.display_.order_%]
 [% FOREACH s=sections %]
 [% IF s.text%]<div>[%s.text%]</div>[%END%]
+[% IF s.form%]<div>[%s.form.render%]</div>[%END%]
 [% fields=s.header%]
 [% IF s.display_.order_%][% fields=s.display_.order_%][%END%]
 [% NEXT UNLESS fields %]
@@ -22,7 +29,20 @@
 </tr>
 [% END %][%# rows %]
 [% ELSE %][%rows or hash %]
-here hash
+<table border="1">
+[%keys=s.keys%]
+[%IF s.display_.order_%]
+[%keys=[]%]
+[%FOREACH k=s.display_.order_%]
+[%keys.push(k)%]
+[%END%][%# s.display_.order_%]
+[%END%][%# s.display_.order_%]
+[%FOREACH k=keys%]
+<tr>
+<td>[%IF s.display_.$k%][%s.display_.$k%][%ELSE%][%k%][%END%]</td><td>[%s.$k%]</td>
+</tr>
+[%END%][%#keys%]
+</table>
 [% END %]
 </table>
 [% END %][%# sections %]
