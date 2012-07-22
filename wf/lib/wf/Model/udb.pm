@@ -31,6 +31,7 @@ it under the same terms as Perl itself.
 __PACKAGE__->meta->make_immutable;
 
 
+my $isuid='3019f26b-c6d5-41bb-9d1e-7311b675f46f'; # UDB
 my $cc;
 
 sub ACCEPT_CONTEXT
@@ -47,10 +48,15 @@ sub authinfo_password
 
 	my $r=db::selectrow_hashref(qq{
 select pw_ac.v1 as passw
-from data lo_ac
-join data pw_ac on pw_ac.v2=lo_ac.v2 and pw_ac.r like 'пароль % учётной записи'
-where lo_ac.r='имя входа учётной записи' and lo_ac.v1=?
-},undef,$authinfo->{username});
+from data def_is
+join data dcon on dcon.v2=def_is.v2 or (dcon.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1=def_is.v2) and dcon.r like 'наименование%')
+join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (select container from containers_of(fio_so.v2)) or exists (select 1 from data so join data ac on ac.v2=so.v1 and so.r='учётная запись сотрудника' where so.v2=fio_so.v2 and ac.v1=def_is.v2 and ac.r='информационная система учётной записи'))
+join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
+left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
+left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
+where def_is.v2=? and def_is.r='наименование ИС'
+and lo_ac.v1=?
+},undef,$isuid,$authinfo->{username});
 	$r or return undef;
 	return $r->{passw};
 }
@@ -64,18 +70,25 @@ sub authinfo_data
 	my %data=%$authinfo;
 
 	my $r=db::selectrow_hashref(qq/
-select fio_so.v2 as souid, lo_ac.v1 as username, pw_ac.v1 as password,fio_so.v1 as fio,
-(select join(', ', v1) from data where r='описание сотрудника' and v2=fio_so.v2) as description
-from data fio_so 
-join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2
-join data lo_ac on lo_ac.r='имя входа учётной записи' and lo_ac.v2=ac_so.v1
-join data pw_ac on pw_ac.r like 'пароль %' and pw_ac.v2=ac_so.v1
-where fio_so.r='ФИО сотрудника' and lo_ac.v1=?
-/,undef,$authinfo->{username});
+
+select fio_so.v2 as souid,comma(distinct fio_so.v1) as fio,
+lo_ac.v1 as username,
+pw_ac.v1 as password, 
+(select comma(distinct v1) from data p join context_of(def_is.v2,fio_so.v2) c on c.item=p.v2 and p.r='свойства сотрудника') as props
+from data def_is 
+join data dcon on dcon.v2=def_is.v2 or (dcon.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1=def_is.v2) and dcon.r like 'наименование%')
+join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (select container from containers_of(fio_so.v2)) or exists (select 1 from data so join data ac on ac.v2=so.v1 and so.r='учётная запись сотрудника' where so.v2=fio_so.v2 and ac.v1=def_is.v2 and ac.r='информационная система учётной записи'))
+join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
+left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
+left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
+where def_is.v2=? and def_is.r='наименование ИС' 
+and lo_ac.v1=?
+group by fio_so.v2,ac_so.v1,def_is.v2, lo_ac.v1, pw_ac.v1
+/,undef,$isuid,$authinfo->{username});
 	%data=(%data,%$r) if $r;
 
 	push @{$data{roles}}, $authinfo->{username};
-	push @{$data{roles}}, split /, */, $data{description};
+	push @{$data{roles}}, split /, */, $data{props};
 
 
 	my $roles="'norole'";
