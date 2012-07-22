@@ -41,6 +41,7 @@
 <li>Просмотр
 <ul>
 	<li><a href="/rec/search">Записи</a></li>
+	<li><a href="/sys/isdata">Данные ИС</a></li>
 </ul>
 </li>
 </ul>

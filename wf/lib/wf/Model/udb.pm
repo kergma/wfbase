@@ -128,6 +128,11 @@ sub rectypes
 	my ($self)=@_;
 	return cached_array_ref($self,qq/select distinct rectype from recv where rectype is not null order by 1/);
 }
+sub islist
+{
+	my ($self)=@_;
+	return cached_array_ref($self,qq/select distinct v2 as isuid, v1 as isname from data where r='наименование ИС'/);
+}
 sub read_row
 {
 	my ($self,$id)=@_;
@@ -140,6 +145,24 @@ select s.*,
 from data s where id=?
 /,undef,$id);
 
+}
+sub read_isdata
+{
+	my ($self,$isuid)=@_;
+	return undef unless $isuid;
+	return read_table($self,qq\
+select fio_so.v2 as souid,comma(distinct fio_so.v1) as fio,
+ac_so.v1 as acuid,
+(select v1 from data where v2=ac_so.v1 and r='имя входа учётной записи' limit 1) as login,
+(select v1 from data where v2=ac_so.v1 and r='пароль ct учётной записи' limit 1) as passw,
+(select comma(distinct v1) from data p join context_of(def_is.v2,fio_so.v2) c on c.item=p.v2 and p.r='свойства сотрудника') as props
+from data def_is 
+join data dcon on dcon.v2=def_is.v2 or (dcon.v2 in (select container from containers_of(def_is.v2) where level=1) and dcon.r like 'наименование%')
+join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (select container from containers_of(fio_so.v2)) or exists (select 1 from data so join data ac on ac.v2=so.v1 and so.r='учётная запись сотрудника' where so.v2=fio_so.v2 and ac.v1=def_is.v2 and ac.r='информационная система учётной записи'))
+join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
+where def_is.v2=? and def_is.r='наименование ИС'
+group by fio_so.v2,ac_so.v1,def_is.v2
+\,$isuid);
 }
 
 sub datarow
