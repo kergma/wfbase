@@ -54,6 +54,15 @@
 </li>
 </ul>
 
+<ul>
+<li>Синхронизация
+<ul>
+	<li><a href="/sync/status">Статус</a></li>
+	<li><a href="/sync/perform">Выполнить</a></li>
+</ul>
+</li>
+</ul>
+
 </div><!-- end menu -->
 
 <div id="header">

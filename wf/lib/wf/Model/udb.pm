@@ -268,6 +268,18 @@ sub newid
 	return db::selectval_scalar("select newid()");
 }
 
+sub syncstatus
+{
+	my $self=shift;
+	return read_table($self,qq\
+select * from (
+select def_is.v2 as isuid,def_is.v1 as isdef,to_char(sync_is.v1::timestamp with time zone,'yyyy-mm-dd hh24:mi:ss') as synctime  from data def_is
+left join data sync_is on sync_is.r='синхронизация ИС' and sync_is.v2=def_is.v2
+where def_is.r='наименование ИС'
+) s order by synctime nulls last
+\);
+ }
+
 package db;
 
 my $dbh;
