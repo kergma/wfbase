@@ -262,6 +262,12 @@ sub read_table
 	return \%result;
 }
 
+sub newid
+{
+	my $self=shift;
+	return db::selectval_scalar("select newid()");
+}
+
 package db;
 
 my $dbh;
