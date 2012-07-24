@@ -29,7 +29,8 @@ use Catalyst qw/
 
 extends 'Catalyst';
 
-our $VERSION = "0.".`svnversion -n ${\(__PACKAGE__->path_to(''))}`;
+our $base=__PACKAGE__->path_to('');
+our $VERSION = "0.".`svnversion -n $base`;
 
 # Configure the application.
 #

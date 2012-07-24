@@ -268,7 +268,7 @@ sub newid
 	return db::selectval_scalar("select newid()");
 }
 
-sub syncstatus
+sub synstatus
 {
 	my $self=shift;
 	return read_table($self,qq\
@@ -309,7 +309,8 @@ sub connect
 			wf->config->{dbname}?"dbname=".wf->config->{dbname}:undef,
 		)),
 		wf->config->{dbusername},
-		wf->config->{dbauth}
+		wf->config->{dbauth},
+		{InactiveDestroy=>1}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;
 	wf::Model::udb::init_schema();
