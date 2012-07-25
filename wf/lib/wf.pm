@@ -81,7 +81,6 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 # Start the application
 __PACKAGE__->setup();
 
-
 =head1 NAME
 
 wf - Catalyst based application

@@ -296,7 +296,7 @@ union
 select otd from orders group by otd having otd = ? 
 union
 select v1 from data where r='отделение сущности' and v2=?
-/,undef, $data{full_name},$data{username},$data{full_name});
+/,undef, $data{souid},$data{username},$data{full_name});
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
 	return \%data;
