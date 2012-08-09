@@ -507,7 +507,7 @@ select * from log l where id=?}
 	push @$packets,{id=>undef};
 
 	my $sth=$dbh->prepare(sprintf(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who,refto,refid, cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1) as who,refto,refid, cause
 from log l
 where id=?
 or (refto=? and refid=?)
@@ -617,9 +617,9 @@ j.address,
 j.invent_number,
 (
 select comma(distinct substring(who from E'^\\\\S+')) as who from (
-select (select v1 from sdata where v2=who and r='ФИО сотрудника') as who from log where refto='orders' and refid=o.id
+select (select v1 from sdata where v2=who and r='ФИО сотрудника' limit 1) as who from log where refto='orders' and refid=o.id
 union  
-select (select v1 from sdata where v2=who and r='ФИО сотрудника') as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
+select (select v1 from sdata where v2=who and r='ФИО сотрудника' limit 1) as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
 ) s
 ) as whos
 from (
@@ -709,7 +709,7 @@ sub search_events
 
 	my $result=query($self,qq{
 select
-l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
+l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
 from log l
 left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
