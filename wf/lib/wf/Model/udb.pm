@@ -162,6 +162,7 @@ join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (sele
 join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
 where def_is.v2=? and def_is.r='наименование ИС'
 group by fio_so.v2,ac_so.v1,def_is.v2
+order by 2
 \,$isuid);
 }
 
