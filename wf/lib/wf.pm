@@ -74,6 +74,7 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 		class => "Cache::FastMmap",
 		expire_time => 300,
 		enable_stats => 1,
+		unlink_on_exit => 1,
 		page_size => '1024k'
 	},
 };
