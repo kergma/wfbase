@@ -871,7 +871,7 @@ sub query
 	};
 	$sdbh->disconnect();
 
-	CORE::exit(0);
+	return {retrieval=>$retrieval};
 
 }
 
