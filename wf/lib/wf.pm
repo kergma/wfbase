@@ -24,8 +24,10 @@ use Catalyst qw/
 		Session::State::Cookie
 		Cache
 		/;
-my $rev='';
-'$Rev$' =~ /(\d+)/ and $rev=$1;
+
+our $base=__PACKAGE__->path_to('');
+my $rev=`svnversion $base/..`;
+chomp $rev;
 
 our $VERSION = "2.$rev";
 
