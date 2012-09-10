@@ -121,6 +121,7 @@
 [% IF c.check_user_roles('разработчик') %]
 <pre>
 [% result.dump %]
+[% dump %]
 </pre>
 [% END %][%# check_user_roles('разработчик') %]
 </div><!-- end content -->

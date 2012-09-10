@@ -45,7 +45,19 @@ Attempt to render a view, if needed.
 
 =cut 
 
-sub end : ActionClass('RenderView') {}
+sub begin :Private
+{
+	my ($self, $c) = @_;
+	$c->stash->{template}='default.tt' unless -f wf->path_to('root')."/".$c->request->{action}.".tt";
+}
+
+sub end : ActionClass('RenderView')
+{
+	my ($self, $c) = @_;
+	$c->{stash}->{form}//=$c->controller->formbuilder if ref($c->action)=~ /FormBuilder/;
+	use Data::Dumper;
+	$c->{stash}->{dump}=Dumper($c->stash);
+}
 
 =head2 auto
 =cut
