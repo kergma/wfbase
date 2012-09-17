@@ -271,17 +271,19 @@ sub authinfo_data
 	my %data=%$authinfo;
 
 	my $r=$dbh->selectrow_hashref(qq/
-select lo_so.v2 as souid, lo_so.v1 as username, pw_lo.v1 as password, fio_so.v1 as full_name, desc_so.v1 as description
+select lo_so.v2 as souid,lo_so.v1 as login,
+(select v1 from data where r like 'пароль %' and v2=lo_so.v1) as password,
+(select comma(v1) from data where r='ФИО сотрудника' and v2=lo_so.v2) as full_name,
+(select comma(distinct lower(v1)) from data where r='свойства сотрудника' and v2 in (select container from containers_of(lo_so.v2) union select lo_so.v2)) as props,
+(select comma(distinct lower(v1)) from data where r like 'описание %' and v2=lo_so.v2) as desc
 from data lo_so
-join data pw_lo on pw_lo.r like 'пароль %' and pw_lo.v2=lo_so.v1
-left join data fio_so on fio_so.r like 'ФИО %' and fio_so.v2=lo_so.v2
-left join data desc_so on desc_so.r like 'описание %' and desc_so.v2=lo_so.v2
 where lo_so.r='логин сотрудника' and lo_so.v1=?
 /
 ,undef,$authinfo->{username});
 
 	%data=(%data,%$r) if $r;
 	push @{$data{roles}}, split / +/,$data{description};
+	push @{$data{roles}}, split /,\s*/,$data{props};
 
 	push @{$data{roles}}, $authinfo->{username};
 	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
@@ -298,6 +300,16 @@ union
 select v1 from data where r='отделение сущности' and v2=?
 /,undef, $data{souid},$data{username},$data{full_name});
 	$otds and @$otds and $data{otd}=join("|",@$otds);
+
+	my $sp=$dbh->selectall_arrayref(qq/
+select so_sp.v2 as uid,comma(name_sp.v1) as name
+from data so_sp
+join data name_sp on name_sp.v2=so_sp.v2 and name_sp.r='наименование структурного подразделения'
+where so_sp.r='принадлежит структурному подразделению' and so_sp.v1=?
+group by so_sp.v2
+/,{Slice=>{}}, $data{souid});
+	$data{sp}=[map {$_->{uid}} @$sp];
+	$data{spname}=[map {$_->{name}} @$sp];
 
 	return \%data;
 }
