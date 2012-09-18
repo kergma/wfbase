@@ -55,8 +55,15 @@ sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
 	$c->{stash}->{form}//=$c->controller->formbuilder if ref($c->action)=~ /FormBuilder/;
-	use Data::Dumper;
-	$c->{stash}->{dump}=Dumper($c->stash);
+	eval {
+		use Data::Dumper;
+		$Data::Dumper::Sortkeys=sub {
+			my ($hash) = @_;
+			return [grep {!/^form|^FormBuilder/} keys %$hash];
+		} unless defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
+
+		$c->{stash}->{dump}=Dumper($c->stash);
+	} if $c->check_any_user_role('разработчик');
 }
 
 =head2 auto
