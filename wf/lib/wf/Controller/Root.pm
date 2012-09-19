@@ -60,10 +60,12 @@ sub end : ActionClass('RenderView')
 		$Data::Dumper::Sortkeys=sub {
 			my ($hash) = @_;
 			return [grep {!/^form|^FormBuilder/} keys %$hash];
-		} unless defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
+		};
+		undef $Data::Dumper::Sortkeys if defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
 
 		$c->{stash}->{dump}=Dumper($c->stash);
 	} if $c->check_any_user_role('разработчик');
+	$c->{stash}->{stash}=$c->{stash};
 }
 
 =head2 auto

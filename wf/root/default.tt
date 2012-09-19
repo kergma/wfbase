@@ -1,1 +1,76 @@
 [%# vim: set filetype=tt2: -%]
+[% queue=[] %]
+[% stash.keyname_="stash" %]
+[% queue.push(stash,{closing=>1}) %]
+
+[%- WHILE queue.size %]
+[%- s=queue.shift %]
+[%- IF s.closing %]</div>[% NEXT %][% END -%]
+<div class="section">
+[%- IF s.form %][% s.form.render %][% END -%]
+
+[%-# ошибка-%]
+[% IF s.error%]Ошибка: [%s.error%][% END %]
+
+[%-# таблица -%]
+[%- fields=s.header%]
+[%- IF s.display_.order_%][% fields=s.display_.order_%][%END%]
+[%- IF fields and !s.error %]
+[%- IF s.query%]
+Число строк [% s.rows.size %], извлечено [% s.retrievedf %] ([% s.duration %] с)[% IF s.permalink %], <a href="[% s.permalink %]">постоянная ссылка</a>[% END %], <a href="/get/query?retrieval=[% s.retrieval %]&amp;as=csv1251">csv1251</a> <a href="/get/query?retrieval=[% s.retrieval %]&amp">...</a>
+[%- END %][%# query %]
+[%- IF s.rows %]
+<table border="1">
+<tr>
+[% FOREACH f=fields%]<td>[%IF s.display_.$f%][%s.display_.$f%][%ELSE%][%f%][%END%]</td>[%END%]
+</tr>
+[% FOREACH r=s.rows%]
+<tr>
+[%- FOREACH f=fields%]<td>[%IF s.display_.href_.$f%]<a href="[%s.display_.href_.$f%][%r.$f%]">[%END%][%r.$f%][%IF s.display_.href_.$f%]</a>[%END%]</td>[%END%]
+</tr>
+[%- END %][%# rows %]
+</table>
+[%- ELSE %][%rows or hash %]
+<table border="1">
+[%keys=s.keys%]
+[%IF s.display_.order_%]
+[%keys=[]%]
+[%FOREACH k=s.display_.order_%]
+[%keys.push(k)%]
+[%END%][%# s.display_.order_%]
+[%END%][%# s.display_.order_%]
+[%FOREACH k=keys%]
+<tr>
+<td>[%IF s.display_.$k%][%s.display_.$k%][%ELSE%][%k%][%END%]</td><td>[%s.$k%]</td>
+</tr>
+[%END%][%#keys%]
+</table>
+[% END %]
+[% END %][%# fields %]
+
+[%- queue.unshift({closing=>1}) %]
+
+[%-# обходим содержимое хеша -%]
+[%- skeys=s.keys %]
+[%- IF s.display_.order_ %]
+[%- skeys=s.display_.order_%]
+[%- END %]
+
+[%- FOREACH k=skeys %]
+[%- NEXT IF k=="stash" or k=="form" or k=="formbuilder" or k=="display_"%]
+[%- v=s.$k %]
+[%- NEXT UNLESS v.keys or (v and !v.substr(0.1) and v.size) %]
+[%- s.$k.keyname_=k %]
+[%- queue.unshift(s.$k)%]
+[%- END %]
+
+[%-# обходим содержимое массива -%]
+[%- IF !skeys and s and s.size %]
+[%- FOREACH v=s%]
+[%- NEXT UNLESS v.keys or (v and !v.substr(0.1) and v.size) %]
+[%- queue.unshift(v) %]
+[%- END %]
+[%- END %]
+
+[%- END %]
+
