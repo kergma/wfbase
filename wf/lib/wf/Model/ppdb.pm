@@ -54,6 +54,7 @@ sub connect
 sub sconnect
 {
 	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'stat', undef, {AutoCommit => 1});
+	print "sdb connected\n";
 	return $sdbh;
 }
 
@@ -167,6 +168,15 @@ sub get_otd_list
 	defined $cc or return undef;
 	$self->connect() or return undef;
 	return cached_array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
+}
+sub get_sp_list
+{
+	my ($self,$souid)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	my $r=cached_array_ref($self,"select v2 as sp, comma(v1) as spname from data d where r='наименование структурного подразделения' and v2 in (select (items_of).item from (select items_of(v2) from data where r='принадлежит структурному подразделению' and v1=?) s union select v2 from data where r='принадлежит структурному подразделению' and v1=?) group by v2 order by 2",$souid,$souid);
+	$_={$_->{sp}=>$_->{spname}} foreach @$r;
+	return $r;
 }
 
 sub get_cd_list
@@ -662,10 +672,10 @@ sub search_packets
 	$self->connect() or return undef;
 
 	my %where;
-	$where{"coalesce(o.otd,'') ~ ?"}=$cc->user->{otd};
+	$where{"1=?"}='1';
 	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
-	$where{"coalesce(o.otd) = ?"}=$filter->{otd} if $filter->{otd};
+	$where{"o.sp = ?"}=$filter->{sp} if $filter->{sp};
 	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
 	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and who in (select v2 from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)))"}=$filter->{who} if $filter->{who};
 	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
@@ -676,19 +686,25 @@ sub search_packets
 
 	my $w=join (" and ",keys %where);
 	my $result=query($self,qq{
+create table pg_temp.vis as select v2::uuid as sp, ''::text as spname from sdata where r='принадлежит структурному подразделению' and v1=?;
+insert into pg_temp.vis select (s.items_of).item::uuid,d.v1 from (select items_of(sp::text) from pg_temp.vis) s join sdata d on d.r='наименование структурного подразделения' and d.v2=(s.items_of).item;
 select
 s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, l.id as status_event,
-(select name from files where id=s.container) as container_name
+(select name from files where id=s.container) as container_name,
+(select v1 from sdata where r='наименование структурного подразделения' and v2=s.sp::text order by length(v1) limit 1) as spname
 from (
-select p.id as packet_id, o.otd, type, container
+select p.id as packet_id, o.sp, type, container
 from packets p
 left join orders o on o.id=p.order_id
-where $w
+where 
+o.sp in (select sp from pg_temp.vis) and $w
 order by p.id desc
 $limit
 ) s
 left join log l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
-},$filter,map($where{$_},keys %where)
+;
+--select * from pg_temp.vis;
+},$filter,$cc->user->{souid},map($where{$_},keys %where)
 );
 	
 	return $result;
