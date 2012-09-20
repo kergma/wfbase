@@ -240,7 +240,7 @@ sub get_who_list
 	my ($self)=@_;
 	defined $cc or return undef;
 	$self->connect() or return undef;
-	return cached_array_ref($self,"select (select v1 from sdata where r='ФИО сотрудника' and v2=l.who) as who from log l where who is not null group by who order by who");
+	return cached_array_ref($self,"select (select v1::uuid from sdata where r='ФИО сотрудника' and v2::uuid=l.who) as who from log l where who is not null group by who order by who");
 }
 
 sub get_oper_list
@@ -622,7 +622,7 @@ sub search_orders
 	$where{"o.id=?"}=$filter->{order_id} if $filter->{order_id};
 	$where{"o.otd=?"}=$filter->{otd} if $filter->{otd};
 	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who=? and o2.id=o.id)"}=$filter->{who} if $filter->{who}=~/^[a-f0-9\-]{36}$/;
-	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who in (select v2 from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)) and o2.id=o.id)"}=$filter->{who} if $filter->{who} and $filter->{who}!~/^[a-f0-9\-]{36}$/;;
+	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who in (select v2::uuid from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)) and o2.id=o.id)"}=$filter->{who} if $filter->{who} and $filter->{who}!~/^[a-f0-9\-]{36}$/;;
 	$where{"o.year=?"}=$filter->{year} if $filter->{year};
 	$where{"o.ordno=?"}=$filter->{ordno} if $filter->{ordno};
 	$where{"o.objno=?"}=$filter->{objno} if $filter->{objno};
@@ -639,9 +639,9 @@ j.address,
 j.invent_number,
 (
 select comma(distinct substring(who from E'^\\\\S+')) as who from (
-select (select v1 from sdata where v2=who and r='ФИО сотрудника' limit 1) as who from log where refto='orders' and refid=o.id
+select (select v1 from sdata where v2::uuid=who and r='ФИО сотрудника' limit 1) as who from log where refto='orders' and refid=o.id
 union  
-select (select v1 from sdata where v2=who and r='ФИО сотрудника' limit 1) as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
+select (select v1 from sdata where v2::uuid=who and r='ФИО сотрудника' limit 1) as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
 ) s
 ) as whos
 from (
@@ -677,7 +677,7 @@ sub search_packets
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
 	$where{"o.sp = ?"}=$filter->{sp} if $filter->{sp};
 	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
-	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and who in (select v2 from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)))"}=$filter->{who} if $filter->{who};
+	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and who in (select v2::uuid from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)))"}=$filter->{who} if $filter->{who};
 	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
 	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
@@ -724,7 +724,7 @@ sub search_events
 	push @where, "l.date > ".$dbh->quote($filter->{from}) if $filter->{from};
 	push @where, "l.date <= ".$dbh->quote($filter->{to}) if $filter->{to};
 	push @where, "l.event = ".$dbh->quote($filter->{event}) if $filter->{event};
-	push @where, "l.who  in (select v2 from sdata where r='ФИО сотрудника' and v1=".$dbh->quote($filter->{who}).")" if $filter->{who};
+	push @where, "l.who  in (select v2::uuid from sdata where r='ФИО сотрудника' and v1=".$dbh->quote($filter->{who}).")" if $filter->{who};
 	push @where, sprintf "lower(l.note) ~ lower(%s)", $dbh->quote($filter->{note}) if $filter->{note};
 	push @where, "l.refto = ".$dbh->quote($filter->{refto}) if $filter->{refto};
 	push @where, "l.refid = ".$dbh->quote($filter->{refid}) if $filter->{refid};
@@ -737,7 +737,7 @@ sub search_events
 
 	my $result=query($self,qq{
 select
-l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
+l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,(select v1::uuid from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
 from log l
 left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
