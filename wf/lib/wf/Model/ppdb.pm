@@ -335,7 +335,7 @@ sub souid
 	my $sth=db::prepare("select distinct v2 as souid from data where r='ФИО сотрудника' and v1=?");
 	$sth->execute($who);
 
-	$whocache->{$who}=$sth->fetchrow_hashref()->{souid};
+	$whocache->{$who}=($sth->fetchrow_hashref()//{})->{souid};
 	delete $whocache->{$who} if $sth->fetchrow_hashref();
 
 	$cc->cache->set("whosouidmap") if $whocache->{$who};
