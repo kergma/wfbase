@@ -383,7 +383,7 @@ from orders o where id=? and otd ~ ?
 	$data{packets}=\%packets;
 
 	$sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
 from log l
 where (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id=?))
@@ -465,7 +465,7 @@ sub read_packet_data
 	my %data;
 	my $packet=$dbh->selectrow_hashref(qq{
 select p.*,
-(select who from log l where refto='packets' and refid=p.id order by id desc limit 1) as who,
+(select coalesce(d.v1,who::text) from log l left join data d on d.r='ФИО сотрудника' and v2::uuid=l.who where refto='packets' and refid=p.id order by l.id desc limit 1) as who,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
 (select event from log where refto='packets' and refid=p.id order by id desc limit 1) as status,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id desc limit 1) as status_date
@@ -481,7 +481,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=$dbh->prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1),who) as who,refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
 from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
@@ -507,7 +507,7 @@ sub read_event_data
 
 	my %data;
 	my $event=$dbh->selectrow_hashref(qq{
-select * from log l where id=?}
+select id,date,event,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,note,refto,refid,cause from log l where id=?}
 ,undef,$id);
 	return undef unless $event;
 	$data{event}=$event;
@@ -529,7 +529,7 @@ select * from log l where id=?}
 	push @$packets,{id=>undef};
 
 	my $sth=$dbh->prepare(sprintf(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,(select v1 from sdata where r='ФИО сотрудника' and v2=l.who limit 1) as who,refto,refid, cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid, cause
 from log l
 where id=?
 or (refto=? and refid=?)
@@ -737,7 +737,7 @@ sub search_events
 
 	my $result=query($self,qq{
 select
-l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,l.who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
+l.id, to_char(date,'yyyy-mm-dd hh24:mi') as date,event,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,note,refto,refid,o.otd,obj.invent_number,obj.address,obj.name,l.cause
 from log l
 left join orders o on o.id=coalesce((select l.refid where l.refto='orders'), (select order_id from packets where id=l.refid and l.refto='packets'),(select '00000000000000000000000000000000'::uuid where l.refto='objects'))
 left join objects obj on obj.id=o.object_id or (obj.id=l.refid and l.refto='objects')
