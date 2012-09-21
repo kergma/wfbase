@@ -3,11 +3,18 @@
 [% stash.keyname_="stash" %]
 [% queue.push(stash,{closing=>1}) %]
 
+querying [%querying%]
 [%- WHILE queue.size %]
 [%- s=queue.shift %]
 [%- IF s.closing %]</div>[% NEXT %][% END -%]
 <div class="section">
 [%- IF s.form %][% s.form.render %][% END -%]
+
+[%- IF s.querying -%]
+[%- querying="yes"-%]
+<p>Запрос выполняется [% s.querying.duration %]с</p>
+<p>Нажмите "Обновить" (F5) чтобы перезагрузить страницу</p>
+[% END%]
 
 [%-# ошибка-%]
 [% IF s.error%]Ошибка: [%s.error%][% END %]
@@ -15,7 +22,7 @@
 [%-# таблица -%]
 [%- fields=s.header%]
 [%- IF s.display_.order_%][% fields=s.display_.order_%][%END%]
-[%- IF fields and !s.error %]
+[%- IF fields and !s.error and !s.querying %]
 [%- IF s.query%]
 Число строк [% s.rows.size %], извлечено [% s.retrievedf %] ([% s.duration %] с)[% IF s.permalink %], <a href="[% s.permalink %]">постоянная ссылка</a>[% END %], <a href="/get/query?retrieval=[% s.retrieval %]&amp;as=csv1251">csv1251</a> <a href="/get/query?retrieval=[% s.retrieval %]&amp">...</a>
 [%- END %][%# query %]
@@ -74,3 +81,14 @@
 
 [%- END %]
 
+[%- IF querying%]
+<script language="JavaScript" type="text/javascript">
+<!--
+window.onload=pageRefresh;
+function pageRefresh()
+{
+	setTimeout("window.location.reload()",3000);
+}
+//-->
+</script>
+[% END %]
