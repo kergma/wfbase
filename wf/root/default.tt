@@ -3,7 +3,6 @@
 [% stash.keyname_="stash" %]
 [% queue.push(stash,{closing=>1}) %]
 
-querying [%querying%]
 [%- WHILE queue.size %]
 [%- s=queue.shift %]
 [%- IF s.closing %]</div>[% NEXT %][% END -%]
