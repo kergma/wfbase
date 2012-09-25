@@ -39,7 +39,12 @@
 
 [% IF c.check_any_user_role('отправляющий','разработчик') %]
 <ul>
-<li><a href="/upload/simple">Загрузка</a></li>
+	<li class="active has-sub"><a href="#"><span>Загрузка</span></a>
+		<ul>
+			<li><a href="/upload/simple"><span>Стандартная</span></a></li>
+			<li><a href="/upload/packet"><span>Интерактивная(тест)</span></a></li>
+		</ul>
+	</li>
 </ul>
 [% END %]
 <ul>
