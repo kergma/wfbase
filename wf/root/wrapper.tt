@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
 -->
 
+<script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
+
 <link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" />
 
 <!--[if IE]>
@@ -39,7 +41,7 @@
 
 [% IF c.check_any_user_role('отправляющий','разработчик') %]
 <ul>
-	<li class="active has-sub"><a href="#"><span>Загрузка</span></a>
+	<li class="active has-sub"><span>Загрузка</span>
 		<ul>
 			<li><a href="/upload/simple"><span>Стандартная</span></a></li>
 			<li><a href="/upload/packet"><span>Интерактивная(тест)</span></a></li>
