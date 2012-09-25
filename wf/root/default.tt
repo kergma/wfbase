@@ -26,7 +26,7 @@ margin-top:1em;
 
 [%- q=[] %]
 [%- FOREACH k=skeys %]
-[%- NEXT IF k=="stash" or k=="form" or k=="formbuilder" or k=="display_" or k=="parent"%]
+[%- NEXT IF k=="stash" or k=="form" or k=="formbuilder" or k=="display_" or k=="parent" or k=="tree"%]
 [%- v=section.$k %]
 [%- NEXT UNLESS v.keys or (v and !v.substr(0,1) and v.size) %]
 [%- section.$k.keyname_=k %]
