@@ -1,0 +1,19 @@
+[%# vim: set filetype=tt2: -%]
+[%UNLESS footer%]
+[%- form.script %]
+[%- form.start %]
+[%- form.statetags %]
+<table>
+[% FOREACH field=form.fields %]
+	<tr>
+	<td>[%field.label%]</td>
+	<td>[%field.readonly ? field.value : field.render%]</td>
+	</tr>
+[% END %]
+</table>
+[%ELSE%][%#footer%]
+<div style="margin-top:1em;margin-left:2em">
+[% form.submit %]
+</div>
+[% form.end %]
+[%END%]

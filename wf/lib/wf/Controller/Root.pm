@@ -48,24 +48,29 @@ Attempt to render a view, if needed.
 sub begin :Private
 {
 	my ($self, $c) = @_;
-	$c->stash->{template}='default.tt' unless -f wf->path_to('root')."/".$c->request->{action}.".tt";
+	$c->stash->{template}='swalker.tt' unless -f wf->path_to('root')."/".$c->request->{action}.".tt";
 }
 
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	$c->{stash}->{form}//=$c->controller->formbuilder if ref($c->action)=~ /FormBuilder/;
 	eval {
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys=sub {
 			my ($hash) = @_;
-			return [grep {!/^form|^FormBuilder/} keys %$hash];
+			return [grep {!/FormBuilder/} keys %$hash];
 		};
 		undef $Data::Dumper::Sortkeys if defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
 
 		$c->{stash}->{dump}=Dumper($c->stash);
 	} if $c->check_any_user_role('разработчик');
 	$c->{stash}->{stash}=$c->{stash};
+	if ($c->stash->{formbuilder})
+	{
+		$c->{stash}->{FormBuilder}->fieldsubs(1);
+		$c->{stash}->{formbuilder}->{display}={order=>[keys %{$c->{stash}->{FormBuilder}->{tmplvar}}]} unless defined $c->{stash}->{formbuilder}->{display};
+		$c->{stash}->{formbuilder}->{form}=$c->{stash}->{FormBuilder} unless defined $c->{stash}->{formbuilder}->{form};
+	};
 }
 
 =head2 auto

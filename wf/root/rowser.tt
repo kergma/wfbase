@@ -1,0 +1,15 @@
+[%# vim: set filetype=tt2: -%]
+[%- fields=h.header%]
+[%- IF h.display_.order_%][% fields=h.display_.order_%][%END%]
+[%- IF fields and !h.error and !h.querying %]
+<table border="1">
+<tr>
+[% FOREACH f=fields%]<td>[%IF h.display_.$f%][%h.display_.$f%][%ELSE%][%f%][%END%]</td>[%END%]
+</tr>
+[% FOREACH r=h.rows%]
+<tr>
+[%- FOREACH f=fields%]<td>[%IF h.display_.href_.$f%]<a href="[%h.display_.href_.$f%][%r.$f%]">[%END%][%r.$f%][%IF h.display_.href_.$f%]</a>[%END%]</td>[%END%]
+</tr>
+[%- END %][%# rows %]
+</table>
+[% END %][%# fields %]

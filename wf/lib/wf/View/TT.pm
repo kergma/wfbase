@@ -8,6 +8,7 @@ __PACKAGE__->config(
 	INCLUDE_PATH => [wf->path_to('root')],
 	WRAPPER => 'wrapper.tt'
 );
+$Template::Directive::WHILE_MAX = 0;
 
 =head1 NAME
 
