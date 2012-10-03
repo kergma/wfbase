@@ -6,8 +6,9 @@
 <table>
 [% FOREACH field=form.fields %]
 	<tr>
-	<td>[%field.label%]</td>
-	<td>[%field.readonly ? field.value : field.render%]</td>
+	<td style="vertical-align:top">[%field.label%]</td>
+	<td>[%IF field.name=='uploader'%][%INCLUDE uploader.tt%][%ELSE%][%field.readonly ? field.value : field.render%][%END%]</td>
+	[%-IF field.desc%]<td>[%field.desc%]</td>[%END%]
 	</tr>
 [% END %]
 </table>
