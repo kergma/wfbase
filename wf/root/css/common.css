@@ -1,0 +1,145 @@
+body {
+	font: 100% 'Lucida Sans Unicode', 'Bitstream Vera Sans', 'Trebuchet Unicode MS', 'Lucida Grande', Verdana, Helvetica, sans-serif;
+}
+
+.g-button {
+	padding: 7px 10px; 
+	border: none; /*solid 1px rgb(153, 153, 153); */
+	color: #000;
+	text-decoration: none; 
+	cursor: pointer; 
+	display: inline-block; 
+	text-align: center; 
+	text-shadow: 0px 1px 1px rgba(255,255,255,1); 
+	line-height: 1;
+ /*    background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(255, 255, 255)), to(rgb(98,202,227)));
+	-webkit-border-radius: 2px 2px; 
+	background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(255, 255, 255)), to(rgb(221, 221, 221))); 
+ */
+}
+
+.button {
+    background: -moz-linear-gradient(center top , #EEEEEE, #DDDDDD) repeat scroll 0 0 transparent;
+    border: 1px solid #CCCCCC;
+    border-radius: 3px 3px 3px 3px;
+    color: #666666;
+    cursor: pointer;
+    display: block;
+    /*font-family: inherit;*/
+    font-size: 16px;
+    font-weight: 600;
+    height: 35px;
+    line-height: 35px;
+    padding: 0 12px;
+    text-decoration: none;
+    text-shadow: 1px 1px 1px #FFFFFF;
+}
+
+.data-table td {
+	background: #FFEDCC;
+}
+
+#auth {
+	color: #FFF;
+	text-align: center;
+	vertical-align: center;
+	height: 35px;
+	float: right;
+	line-height:35px;
+}
+
+#login-name {
+	color: #FFF;
+	height: 35px;
+	float: left;
+}
+
+#logout {
+	color: #FFF;
+	height: 35px;
+	float: left;
+	padding:0px 10px 0px 10px;
+}
+
+#auth a{
+	color: #EF9C02;
+}
+
+#main-menu, #main-menu ul {
+	background:#225AA5;
+	height:35px;
+	padding:0; 
+	margin:0; 
+	list-style-type: none;
+}
+#main-menu {
+	border:none;
+	/*border:0px;*/
+	margin:0px;
+	padding:0px;
+	font: 67.5% 'Lucida Sans Unicode', 'Bitstream Vera Sans', 'Trebuchet Unicode MS', 'Lucida Grande', Verdana, Helvetica, sans-serif;
+	font-size:14px;
+	/*font-weight:bold;*/
+	/*margin:25px 0 200px 15px; */
+	/*position:relative; */
+	/*z-index:500;*/
+}
+#main-menu li {
+	float:left;
+	position:relative;
+	height:35px;
+}
+#main-menu a, #main-menu a:visited {
+
+	background:#225AA5; 
+	color:#cccccc;
+	padding:0px 25px;
+	text-decoration:none;
+/*
+	font-weight:normal;
+	margin:0px;
+*/
+	line-height:35px;
+	text-align:center;
+	display:block; 
+	/*width:100px; */
+	/*font-size:10px; */
+	height:35px; 
+	/*line-height:22px; */
+	/*text-indent:5px; */
+	/*background:#b2ab9b; */
+	border:0px solid #fff; 
+	/*border-width:0 1px 1px 0;*/
+}
+#main-menu ul li a, #main-menu ul li a:visited{
+	padding:0px 10px 0px 15px;
+	text-align:left;
+	text-decoration:none;
+	width:225px;
+	}
+#main-menu li:hover > a{
+	background:#EF9C02; 
+	color:#FFF;
+}
+#main-menu li ul {
+	background:#225AA5;
+	display:none;
+	height:auto;
+	padding:0px;
+	margin:0px;
+	border:0px;
+	position:absolute;
+	z-index:200;
+	width:225px;
+}
+#main-menu li:hover > ul {
+	display:block;
+	position:absolute;
+	top:0; 
+	left:250px;
+}
+#main-menu > li:hover > ul {
+	background:#225AA5;
+	left:0; 
+	top:35px;
+}
