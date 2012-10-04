@@ -1,0 +1,2 @@
+[%# vim: set filetype=tt2: -%]
+[%IF n.key=="text" or n.key=="text item"%]<p>[%n.value%]</p>[%END%]
