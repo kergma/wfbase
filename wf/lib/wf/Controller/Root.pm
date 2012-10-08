@@ -65,7 +65,7 @@ sub end : ActionClass('RenderView')
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys=sub {
 			my ($hash) = @_;
-			return [grep {!/FormBuilder/} keys %$hash];
+			return [grep {!/FormBuilder|^_?form$/} keys %$hash];
 		};
 		undef $Data::Dumper::Sortkeys if defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
 
