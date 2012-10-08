@@ -177,6 +177,24 @@ sub get_sp_list
 	$_={$_->{sp}=>$_->{spname}} foreach @$r;
 	return $r;
 }
+sub get_outersp_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	my $r=cached_array_ref($self,qq"
+select v2 as sp, shortest(v1) as spname, 1 as ord from data d where r='наименование структурного подразделения' and v2 in ('a9b7079b-26de-49e3-8d16-9e141d644faf','d86e0ad4-4824-430b-9790-5e78e3a87cae') group by v2
+union
+select d.v2 as sp, shortest(d.v1) as spname, 2 as ord from (
+select v2,items_of(v2) from data where lower(v1) like '%отделение%' and r='свойства структурного подразделения' 
+) s 
+join data d on d.r='наименование структурного подразделения' and d.v2 in (s.v2,(s.items_of).item)
+group by d.v2
+order by ord,2
+");
+	$_={$_->{sp}=>$_->{spname}} foreach @$r;
+	return $r;
+}
 
 sub get_cd_list
 {
@@ -241,6 +259,37 @@ sub get_who_list
 	$self->connect() or return undef;
 	return cached_array_ref($self,"select (select v1::uuid from sdata where r='ФИО сотрудника' and v2::uuid=l.who) as who from log l where who is not null group by who order by who");
 }
+
+sub get_coworkers_list
+{
+	my ($self,$souid)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	my $r=cached_array_ref($self,qq/
+select comma(distinct fio_cw.v1) as fio, fio_cw.v2 as souid
+from data dc
+join data cw on cw.r='принадлежит структурному подразделению' and cw.v2=dc.v2
+join data fio_cw on fio_cw.r='ФИО сотрудника' and fio_cw.v2=cw.v1
+where dc.v1=? and dc.r='принадлежит структурному подразделению'
+group by fio_cw.v2
+order by 1
+/,$souid);
+	$_={$_->{souid}=>$_->{fio}} foreach @$r;
+	return $r;
+}
+
+sub get_dispatchee_list
+{
+	my ($self)=@_;
+	defined $cc or return undef;
+	$self->connect() or return undef;
+	my $r=cached_array_ref($self,qq/
+select v2 as uid, shortest(v1) as name from data where r in ('ФИО сотрудника', 'наименование структурного подразделения') group by v2,r order by r, name
+/);
+	$_={$_->{uid}=>$_->{name}} foreach @$r;
+	return $r;
+}
+
 
 sub get_oper_list
 {
