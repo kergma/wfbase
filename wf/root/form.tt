@@ -5,6 +5,7 @@
 [%- form.statetags %]
 <table>
 [% FOREACH field=form.fields %]
+	[%-IF field.type=='hidden' %][%field.render%][%NEXT%][%END%]
 	<tr>
 	<td style="vertical-align:top">[%field.label%]</td>
 	<td>[%IF field.name=='uploader'%][%INCLUDE uploader.tt%][%ELSE%][%field.readonly ? field.value : field.render%][%END%]</td>
