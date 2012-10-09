@@ -15,8 +15,10 @@
 -->
 
 <script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
+<script type="text/javascript" src="/scripts/informer.js"></script>
 
 <link rel="stylesheet" href="/css/common.css" />
+<link rel="stylesheet" href="/css/informer.css" />
 
 <!--[if IE]>
 
@@ -39,8 +41,26 @@
 <div style="text-align: right; width: 100%">
 	<div style="text-align:right;color:lightgray">[% version %]</div>
 </div>
-
 [% END %]
+
+<div id="informer">
+	<div id="informer-buttons">
+		<div class='up'><img src="/static/images/arrow_up.png"></div>
+		<div class='down'><img src="/static/images/arrow_down.png"></div>
+		<div class='close'><img src="/static/images/x.png"></div>
+	</div>
+	<ul id="informer-messages">
+	</ul>
+</div>
+
+<script type="text/javascript">
+
+	window.onload = function () {
+		var inf = new informer.Informer('informer');
+	}
+
+</script>
+
 
 <div><!-- main-menu -->
 	<div id="auth">

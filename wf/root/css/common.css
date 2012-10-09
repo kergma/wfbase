@@ -1,4 +1,5 @@
 body {
+	margin: 0;
 	/*font: 100% 'Lucida Sans Unicode', 'Bitstream Vera Sans', 'Trebuchet Unicode MS', 'Lucida Grande', Verdana, Helvetica, sans-serif;*/
 }
 
@@ -39,7 +40,9 @@ body {
 	background: #FFEDCC;
 }
 
+
 #auth {
+	background:#225AA5;
 	color: #FFF;
 	font: 100% 'Lucida Sans Unicode', 'Bitstream Vera Sans', 'Trebuchet Unicode MS', 'Lucida Grande', Verdana, Helvetica, sans-serif;
 	text-align: center;
@@ -47,23 +50,22 @@ body {
 	height: 35px;
 	float: right;
 	line-height:35px;
+	padding:0px 5px;
 }
-
+#auth a{
+	color: #EF9C02;
+}
 #login-name {
 	color: #FFF;
 	height: 35px;
 	float: left;
+	padding:0px 5px;
 }
-
 #logout {
 	color: #FFF;
 	height: 35px;
 	float: left;
-	padding:0px 10px 0px 10px;
-}
-
-#auth a{
-	color: #EF9C02;
+	padding:0px 5px;
 }
 
 #main-menu, #main-menu ul {
