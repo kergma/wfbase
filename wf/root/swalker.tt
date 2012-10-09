@@ -19,8 +19,9 @@
 
  	[%-# тип узла: s - скаляр, a - массив, h - хеш %]
 	[%- type="s" %]
-	[%- IF value and !value.substr(0,1).length and value.size %][% type="a" %][% END %]
+	[%- IF value and !value.VERSION and !value.substr(0,1).length and value.size %][% type="a" %][% END %]
 	[%- IF value.keys %][% type="h" %][% END %]
+	[%- IF value.VERSION %][% type="o" %][% END %]
 	[%- IF type=="s"%][%INCLUDE scalar.tt n=node%][%NEXT%][%END%]
 	
 	[%- keys=value.keys %]
