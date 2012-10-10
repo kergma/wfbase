@@ -44,12 +44,8 @@
 [% END %]
 
 <div id="informer">
-	<div id="informer-buttons">
-		<div class='up'><img src="/static/images/arrow_up.png"></div>
-		<div class='down'><img src="/static/images/arrow_down.png"></div>
-		<div class='close'><img src="/static/images/x.png"></div>
-	</div>
 	<ul id="informer-messages">
+		<div id="informer-close"><img src="/static/images/x.png"></div>
 	</ul>
 </div>
 
