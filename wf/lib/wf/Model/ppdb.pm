@@ -913,6 +913,7 @@ sub query
 	my $retrieval=Digest::MD5::md5_hex(rand());
 	my $start=time;
 
+	$SIG{CHLD} = 'IGNORE';
 	my $child=fork();
 
 	unless (defined $child)
