@@ -944,7 +944,7 @@ sub query
 
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
-	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params)};
+	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params)};
 	$cache->remove("qkey-$qkey");
 	unless ($cache->set("retr-$retrieval",$result))
 	{

@@ -1,2 +1,7 @@
 [%# vim: set filetype=tt2: -%]
-[%IF n.key=="text" or n.key=="text item"%]<p>[%n.value%]</p>[%END%]
+[%IF n.key=="text" or n.key=="text item"%]<p>[%n.value%]</p>
+[%ELSIF n.key=="pre" or n.key=="pre item"%]<pre>[%n.value%]</pre>
+[%ELSIF n.key=="error"%]<p>Ошибка: [%n.value%]</p>
+[%ELSIF n.key=="title"%]<h2>[%n.value%]</h2>
+[%ELSE%]
+[%END%]
