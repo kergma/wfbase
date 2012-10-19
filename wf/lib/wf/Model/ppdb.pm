@@ -954,7 +954,9 @@ sub query
 	};
 	$sdbh->disconnect();
 
-	return {retrieval=>$retrieval};
+	exit 0; # PSGI
+	#CORE::exit(0); # Apache mod_perl
+	#return {retrieval=>$retrieval}; # fast_cgi
 
 }
 
