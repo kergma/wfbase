@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
 <script type="text/javascript" src="/static/js/jquery-ui-1.8.23.custom.min.js"></script>
 <link rel="stylesheet" href="/css/jquery-ui-1.8.23.custom.css" />
-<link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" />
+<link rel="stylesheet" href="/css/hmenu.css" />
 -->
 
 <script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
@@ -61,7 +61,7 @@
 <div><!-- main-menu -->
 	<div id="auth">
 		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
-		<div id="logout"><a href="[% c.uri_for('/auth/logout') %]">выход</a></div>
+		<div id="logout"><a href="/auth/logout">выход</a></div>
 	</div>
 	<ul id="main-menu">
 		[% IF c.check_any_user_role('отправляющий','разработчик') %]
@@ -74,10 +74,10 @@
 		<li><a href="#">Просмотр</a>
 			[% IF c.check_any_user_role('оператор','диспетчер','администратор') %]
 			<ul>
-				<li><a href="[% c.uri_for('/search/objects') %]">Объекты</a></li>
-				<li><a href="[% c.uri_for('/search/orders') %]">Заказы</a></li>
-				<li><a href="[% c.uri_for('/search/packets') %]">Пакеты</a></li>
-				<li><a href="[% c.uri_for('/search/events') %]">События</a></li>
+				<li><a href="/search/objects">Объекты</a></li>
+				<li><a href="/search/orders">Заказы</a></li>
+				<li><a href="/search/packets">Пакеты</a></li>
+				<li><a href="/search/events">События</a></li>
 				<li><a href="/query/cat">Каталог</a></li>
 			</ul>
 			[% END %]
@@ -94,7 +94,7 @@
 		</li>
 		<li><a href="#">Обработка</a>
 			<ul>
-				<li><a href="[% c.uri_for('/log/browse') %]">Просмотр журнала</a></li>
+				<li><a href="/log/browse">Просмотр журнала</a></li>
 			</ul>
 		</li>
 		[% END %]
@@ -103,10 +103,10 @@
 		<li><a href="#">Управление</a>
 			<ul>
 				[% IF c.check_any_user_role('администратор','разработчик') %]
-				<li><a href="[% c.uri_for('/export/status') %]">Передача пакетов</a></li>
-				<li><a href="[% c.uri_for('/export/history') %]">История передач</a></li>
+				<li><a href="/export/status">Передача пакетов</a></li>
+				<li><a href="/export/history">История передач</a></li>
 				[% END %]
-				<li><a href="[% c.uri_for('/dispatch/queue') %]">Очередь обработки</a></li>
+				<li><a href="/dispatch/queue">Очередь обработки</a></li>
 				[% IF c.check_any_user_role('контролирующий','разработчик') %]
 				<li><a href="/query/edit">Редактор</a></li>
 				<li><a href="/task/status">Текущие задачи</a>
