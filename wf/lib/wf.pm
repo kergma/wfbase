@@ -79,7 +79,6 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 			share_file => '/tmp/sharefile-wfcache',
 			expire_time => 300,
 			enable_stats => 1,
-			unlink_on_exit => 1,
 			page_size => '128k',
 		},
 		big=>
