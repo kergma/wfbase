@@ -71,15 +71,35 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 
 __PACKAGE__->config->{"Plugin::Cache"} =
 {
-	backend =>
+	backends =>
 	{
-		class => "Cache::FastMmap",
-		expire_time => 300,
-		enable_stats => 1,
-		unlink_on_exit => 1,
-		page_size => '1024k'
+		fast=>
+		{
+			class => "Cache::FastMmap",
+			share_file => '/tmp/sharefile-wfcache',
+			expire_time => 300,
+			enable_stats => 1,
+			unlink_on_exit => 1,
+			page_size => '128k',
+		},
+		big=>
+		{
+			#class => "Cache::Memcached",
+			#servers=>['127.0.0.1:11211'],
+
+			class => "Cache::FileCache",
+			cache_root=>'/home/worker/tmp/wfcache',
+			default_expires_in=>300,
+		},
+	},
+	profiles =>
+	{
+		fast=>{backend=>"fast"},
+		big=>{backend=>"big"},
 	},
 };
+
+__PACKAGE__->config->{"Plugin::Cache"}->{backend}=__PACKAGE__->config->{"Plugin::Cache"}->{backends}->{fast};
 
 # Start the application
 __PACKAGE__->setup();

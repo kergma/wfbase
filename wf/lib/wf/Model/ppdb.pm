@@ -389,6 +389,24 @@ sub souid
 	$cc->cache->set("whosouidmap") if $whocache->{$who};
 	return $whocache->{$who};
 }
+sub sodata
+{
+	my ($self, $souid)=@_;
+	$self->connect() or return undef;
+	my $sodata=$cc->cache->get("sodata-$souid");
+	unless ($sodata)
+	{
+		
+		$sodata=db::selectrow_hashref(qq/
+select fio_so.v2 as souid, fio_so.v1 as full_name, lo_so.v1 as login
+from data fio_so
+join data lo_so on lo_so.v2=fio_so.v2 and lo_so.r='логин сотрудника'
+where fio_so.v2=? and fio_so.r='ФИО сотрудника'
+/,undef,$souid);
+		$cc->cache->set("sodata-$souid",$sodata);
+	};
+	return $sodata;
+}
 
 sub log_event
 {
@@ -923,8 +941,8 @@ sub query
 	if ($child)
 	{
 		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
-		$cache->set("qkey-$qkey",$querying);
-		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying,params=>$params});
+		$cache->set("qkey-$qkey",$querying,0);
+		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
 		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {retrieval=>$retrieval};
 	};
@@ -944,12 +962,12 @@ sub query
 
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	}
-	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params)};
+	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
 	$cache->remove("qkey-$qkey");
-	unless ($cache->set("retr-$retrieval",$result))
+	if (scalar(@{$result->{rows}})*scalar(@{$result->{header}})>30 or !$cache->set("retr-$retrieval",$result))
 	{
+		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
 		delete $result->{rows};
-		$result->{error}='Не удалось произвести кеширование - результат слишком велик';
 		$cache->set("retr-$retrieval",$result);
 	};
 	$sdbh->disconnect();
@@ -967,7 +985,12 @@ sub result
 	my $result=$cache->get("retr-$retrieval");
 	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
 	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
-	$cache->set("retr-$retrieval",$result);
+	$cache->set("retr-$retrieval",$result,defined $result->{querying}?0:undef);
+	unless ($result->{rows})
+	{
+		$result->{rows}=$cc->cache("big")->get("rows-$retrieval");
+		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
+	};
 	return $result;
 }
 
