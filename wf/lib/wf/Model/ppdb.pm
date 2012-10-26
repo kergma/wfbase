@@ -938,18 +938,20 @@ sub query
 	{
 		return {error=>'cannot fork'};
 	};
+	$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child||$$,start=>$start};
 	if ($child)
 	{
-		$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child,start=>$start};
 		$cache->set("qkey-$qkey",$querying,0);
-		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,querying=>$querying,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
+		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
 		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {retrieval=>$retrieval};
 	};
 	
 	my $sdbh=$self->sconnect() or return undef;
+	$querying->{pg_pid}=$sdbh->{pg_pid};
+	$cache->set("qkey-$qkey",$querying,0);
 
-	my $result={};
+	my $result={qkey=>$qkey};
 	my $sth;
 	eval {$sth=$sdbh->prepare($query);};
 	if ($sth and $sth->execute(@values))
@@ -961,10 +963,10 @@ sub query
 		}; 
 
 		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
-	}
+	};
 	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
 	$cache->remove("qkey-$qkey");
-	if (scalar(@{$result->{rows}})*scalar(@{$result->{header}})>30 or !$cache->set("retr-$retrieval",$result))
+	if (scalar(@{$result->{rows}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("retr-$retrieval",$result))
 	{
 		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
 		delete $result->{rows};
@@ -980,18 +982,31 @@ sub query
 
 sub result
 {
-	my ($self,$retrieval,$start,$count)=@_;
+	my ($self,$retrieval,$onlyheader)=@_;
 	my $cache=$cc->cache;
 	my $result=$cache->get("retr-$retrieval");
 	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
+	$result->{querying}=$cache->get("qkey-$result->{qkey}");
 	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
 	$cache->set("retr-$retrieval",$result,defined $result->{querying}?0:undef);
-	unless ($result->{rows})
+	unless ($result->{rows} or $onlyheader)
 	{
 		$result->{rows}=$cc->cache("big")->get("rows-$retrieval");
 		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
 	};
 	return $result;
+}
+
+sub cancel_query
+{
+	my ($self,$r)=@_;
+	$r=result($self,$r) if ref \$r eq 'SCALAR';
+	return unless $r->{querying};
+
+	my $sdbh=$self->sconnect() or return undef;
+	$sdbh->do("select cancel_query(?)",undef,$r->{querying}->{pg_pid});
+	$sdbh->disconnect;
+
 }
 
 sub log_packet
