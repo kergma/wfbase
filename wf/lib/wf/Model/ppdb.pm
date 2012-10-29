@@ -963,7 +963,7 @@ sub query
 			push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 		}; 
 
-		$result={rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
+		$result={qkey=>$qkey,rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
 	};
 	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
 	$cache->remove("qkey-$qkey");
