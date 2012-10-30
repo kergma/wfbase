@@ -48,6 +48,7 @@ sub connect
 {
 	$dbh and return $dbh;
 	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'mailproc', undef, {AutoCommit => 1,InactiveDestroy=>1});
+	$dbh->do("create function pg_temp.wfuser() returns uuid as \$\$select '${\($cc->user->{souid})}'::uuid\$\$ language sql") if $cc->user;
 	return $dbh;
 }
 
@@ -63,14 +64,25 @@ sub array_ref
 	my ($self, $q, @values)=@_;
 	$self->connect() or return undef;
 
+	my $opts={row=>'auto'};
+	if (ref $q eq 'HASH')
+	{
+		%$opts=(%$opts,%$q);
+		$q=shift @values;
+	};
+
 	my $sth=$dbh->prepare($q);
 	$sth->execute(@values);
+	my $row=$opts->{row};
+	$opts->{row}='hashref' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})>1;
+	$opts->{row}='col' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})==1;
 	my @result=();
-	while(my $r=$sth->fetchrow_hashref)
+	while(my $r=($opts->{row} eq 'hashref'?$sth->fetchrow_hashref:$sth->fetchrow_arrayref))
 	{
-		push @result,join('',values %$r) if keys(%$r)==1;
-		push @result,$r if keys(%$r)>1;
-	};
+		push @result,$r->[0] if $opts->{row} eq 'col';
+		push @result,$r if $opts->{row} eq 'hashref';
+		push @result,[@$r] if $opts->{row} eq 'arrayref';
+	}
 	return \@result;
 }
 
@@ -78,8 +90,15 @@ sub cached_array_ref
 {
 	my ($self, $q, @values)=@_;
 	$self->connect() or return undef;
+	my $opts={};
+	if (ref $q eq 'HASH')
+	{
+		$opts=$q;
+		$q=shift @values;
+	};
 
 	my $md5=Digest::MD5->new;
+	$md5->add($opts->{cache_key}) if defined $opts->{cache_key};
 	$md5->add($q);
 	$md5->add($_) foreach @values;
 	my $qkey=$md5->hexdigest();
@@ -87,7 +106,7 @@ sub cached_array_ref
 	my $result=$cc->cache->get("aref-".$qkey);
 	unless ($result)
 	{
-		$result=array_ref($self,$q,@values);
+		$result=array_ref(@_);
 		$cc->cache->set("aref-".$qkey,$result);
 	};
 	return $result;
@@ -195,6 +214,21 @@ order by ord,2
 ");
 	$_={$_->{sp}=>$_->{spname}} foreach @$r;
 	return $r;
+}
+
+sub options_list
+{
+	my ($self, $q, @values)=@_;
+	my $opts={row=>'arrayref'};
+	if (ref $q eq 'HASH')
+	{
+		%$opts=(%$q,%$opts);
+		$q=shift @values;
+	};
+	my $r=cached_array_ref($self,$opts,$q);
+	$_=scalar(@$_)==1?$_->[0]:{$_->[0]=>$_->[1]} foreach @$r;
+	return $r;
+
 }
 
 sub get_cd_list
@@ -369,6 +403,8 @@ group by so_sp.v2
 /,{Slice=>{}}, $data{souid});
 	$data{sp}=[map {$_->{uid}} @$sp];
 	$data{spname}=[map {$_->{name}} @$sp];
+
+	$dbh->do("create or replace function pg_temp.wfuser() returns uuid as \$\$select '$data{souid}'::uuid\$\$ language sql");
 
 	return \%data;
 }
@@ -920,6 +956,7 @@ sub query
 	my $cache=$cc->cache;
 
 	my $md5=Digest::MD5->new;
+	$md5->add($cc->user->{souid});
 	$md5->add($query);
 	$md5->add($_) foreach @values;
 	my $qkey=$md5->hexdigest();
