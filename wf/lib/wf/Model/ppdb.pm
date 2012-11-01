@@ -1042,8 +1042,16 @@ sub cancel_query
 	return unless $r->{querying};
 
 	my $sdbh=$self->sconnect() or return undef;
-	$sdbh->do("select cancel_query(?)",undef,$r->{querying}->{pg_pid});
+	my $re=$sdbh->selectrow_hashref("select cancel_query(?)",undef,$r->{querying}->{pg_pid});
 	$sdbh->disconnect;
+	unless ($re)
+	{
+		kill 9, $r->{querying}->{pid};
+		$r->{error}='Выполнение запроса прервано';
+		$cc->cache->remove("qkey-$r->{qkey}");
+		$cc->cache->set("retr-$r->{retrieval}",$r);
+	};
+	return $re;
 
 }
 
