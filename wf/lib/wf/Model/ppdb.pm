@@ -11,6 +11,7 @@ use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
 use packetproc;
 use db;
+use util;
 
 
 
@@ -72,7 +73,8 @@ sub array_ref
 	};
 
 	my $sth=$dbh->prepare($q);
-	$sth->execute(@values);
+	my $r=$sth->execute(@values);
+	return undef unless $r;
 	my $row=$opts->{row};
 	$opts->{row}='hashref' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})>1;
 	$opts->{row}='col' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})==1;
@@ -82,7 +84,14 @@ sub array_ref
 		push @result,$r->[0] if $opts->{row} eq 'col';
 		push @result,$r if $opts->{row} eq 'hashref';
 		push @result,[@$r] if $opts->{row} eq 'arrayref';
+		push @result,[@$r] if $opts->{row} eq 'enhash';
 	}
+	if ($opts->{row} eq 'enhash')
+	{
+		my $r={};
+		$r->{$_->[0]}=$_ foreach @result;
+		return $r;
+	};
 	return \@result;
 }
 
@@ -107,10 +116,11 @@ sub cached_array_ref
 	unless ($result)
 	{
 		$result=array_ref(@_);
-		$cc->cache->set("aref-".$qkey,$result);
+		$cc->cache->set("aref-".$qkey,$result) if defined $result;
 	};
 	return $result;
 }
+
 
 sub read_row
 {
@@ -191,11 +201,7 @@ sub get_otd_list
 sub get_sp_list
 {
 	my ($self,$souid)=@_;
-	defined $cc or return undef;
-	$self->connect() or return undef;
-	my $r=cached_array_ref($self,"select v2 as sp, shortest(v1) as spname from data d where r='наименование структурного подразделения' and v2 in (select (items_of).item from (select items_of(v2) from data where r='принадлежит структурному подразделению' and v1=?) s union select v2 from data where r='принадлежит структурному подразделению' and v1=?) group by v2 order by 2",$souid,$souid);
-	$_={$_->{sp}=>$_->{spname}} foreach @$r;
-	return $r;
+	return options_list($self,{cache_key=>$souid},qq/select distinct item,sp_name from items where souid=? and sp_name is not null order by 2/,$souid);
 }
 sub get_outersp_list
 {
@@ -225,7 +231,7 @@ sub options_list
 		%$opts=(%$q,%$opts);
 		$q=shift @values;
 	};
-	my $r=cached_array_ref($self,$opts,$q);
+	my $r=cached_array_ref($self,$opts,$q,@values);
 	$_=scalar(@$_)==1?$_->[0]:{$_->[0]=>$_->[1]} foreach @$r;
 	return $r;
 
@@ -284,7 +290,7 @@ sub get_event_list
 
 	my $reftow="";
 	$refto and $reftow="and refto=".$dbh->quote($refto);
-	return cached_array_ref($self,"select event from log where event is not null $reftow and id>uuid_generate_v1o(now()-3*interval '1 month') group by event order by event");
+	return cached_array_ref($self,"select event from log where event is not null $reftow and id>uuid_generate_v1o(now()-6*interval '1 month') group by event order by event");
 }
 
 sub get_who_list
@@ -366,7 +372,7 @@ sub authinfo_data
 	my $r=$dbh->selectrow_hashref(qq/
 select lo_so.v2 as souid,lo_so.v1 as login,
 (select v1 from data where r like 'пароль %' and v2=lo_so.v1) as password,
-(select comma(v1) from data where r='ФИО сотрудника' and v2=lo_so.v2) as full_name,
+(select (latest(data.*)).v1 from data where r='ФИО сотрудника' and v2=lo_so.v2) as full_name,
 (select comma(distinct lower(v1)) from data where r='свойства сотрудника' and v2 in (select container from containers_of(lo_so.v2) union select lo_so.v2)) as props,
 (select comma(distinct lower(v1)) from data where r like 'описание %' and v2=lo_so.v2) as desc
 from data lo_so
@@ -721,48 +727,56 @@ sub search_orders
 	my $start=time;
 
 	my %where;
-	$where{"coalesce(o.otd,'') ~ ?"}=$cc->user->{otd};
+	$where{qq/(o.sp::text in (select item from items where souid=? and sp_name is not null)
+or o.id in (select refid from log where refto='orders' and (who::text in (select item from items where souid=? and sp_name is not null)) or who=?))
+/}=[$cc->user->{souid},$cc->user->{souid},$cc->user->{souid}];
+
 	$where{"o.id=?"}=$filter->{order_id} if $filter->{order_id};
-	$where{"o.otd=?"}=$filter->{otd} if $filter->{otd};
-	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who=? and o2.id=o.id)"}=$filter->{who} if $filter->{who}=~/^[a-f0-9\-]{36}$/;
-	$where{"exists (select 1 from log l left join packets p on l.refto='packets' and p.id=l.refid join orders o2 on o2.id=p.order_id or (l.refto='orders' and o2.id=l.refid) where who in (select v2::uuid from sdata where r='ФИО сотрудника' and lower(v1)~lower(?)) and o2.id=o.id)"}=$filter->{who} if $filter->{who} and $filter->{who}!~/^[a-f0-9\-]{36}$/;;
+	$where{"o.sp=?"}=$filter->{sp} if $filter->{sp};
 	$where{"o.year=?"}=$filter->{year} if $filter->{year};
-	$where{"o.ordno=?"}=$filter->{ordno} if $filter->{ordno};
+	$where{"o.ordno=?"}=$filter->{ordspec} if $filter->{ordspec};
+	if ($filter->{ordspec} =~ /^(\d{4})(\d{2})(\d{6})\d{6}$/)
+	{
+		my ($spcode,$year,$ordno6)=($1,$2+2000,$3);
+		my $spcodes=cached_array_ref($self,{row=>'enhash'},"select distinct v1 as code, v2 as sp from data where r='код структурного подразделения'");
+		$where{"/**/o.sp=?"}=$spcodes->{$spcode}->[1];
+		$where{"/**/o.year=?"}=$year;
+		$where{"o.ordno=?"}="00$ordno6";
+	};
 	$where{"o.objno=?"}=$filter->{objno} if $filter->{objno};
-	$where{"exists (select 1 from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and event=?)"}=$filter->{ostatus} if $filter->{ostatus};
-	$where{"exists (select 1 from log l join packets p on p.id=l.refid and l.refto='packets' where p.order_id=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and l.event=?)"}=$filter->{pstatus} if $filter->{pstatus};
+	$where{"exists (select 1 from log l where id>=o.id and refto='orders' and refid=o.id and who in (select v2::uuid from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))"}=$filter->{who} if $filter->{who};
+	$where{"exists (select 1 from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id) and event=?)"}=$filter->{status} if $filter->{status};
 	$where{"exists (select 1 from objects where id=o.object_id and lower(address) ~ lower(?))"}=$filter->{address} if $filter->{address};
+	
+	$where{"not exists (select 1 from packets where order_id=o.id)"}='novalue' if $filter->{ready} eq 'нет данных';
+	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='загружен'"}='novalue' if $filter->{ready} eq 'распределение';
+	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='назначен'"}='novalue' if $filter->{ready} eq 'проверка';
+	$where{"exists (select 1 from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' and l.event='отклонён' and lower(coalesce(l.note,'замечания'))~'замечания' and not exists (select 1 from packets where type=p.type and id>l.id and order_id=p.order_id))"}='novalue' if $filter->{ready} eq 'замечания';
+	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)<>'принят'"}='novalue' if $filter->{ready} eq 'обработка';
+	$where{"(select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)='принят'"}='novalue' if $filter->{ready} eq 'техплан';
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $result=query($self,sprintf(qq{
-select o.*,
-j.address,
-j.invent_number,
-(
-select comma(distinct substring(who from E'^\\\\S+')) as who from (
-select (select v1 from sdata where v2::uuid=who and r='ФИО сотрудника' limit 1) as who from log where refto='orders' and refid=o.id
-union  
-select (select v1 from sdata where v2::uuid=who and r='ФИО сотрудника' limit 1) as who from log where refto='packets' and refid in (select id from packets where order_id=o.id) 
-) s
-) as whos
+	my $result=query($self,sprintf(qq\
+select 
+o.id as order_id,
+(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+year,
+(select v1 from sdata where r='код структурного подразделения' and v2=o.sp::text order by id limit 1)||year-2000||substr(o.ordno,3,6)||'000000' as ordno,
+(select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status,
+(case when not exists (select 1 from packets where order_id=o.id) then 'нет данных' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='загружен' then 'распределение' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='назначен' then 'проверка' when exists (select 1 from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' and l.event='отклонён' and lower(coalesce(l.note,'замечания'))~'замечания' and not exists (select 1 from packets where type=p.type and id>l.id and order_id=p.order_id)) then 'замечания' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)<>'принят' then 'обработка' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)='принят' then 'техплан' else null end) as ready,
+(select coalesce((select (latest(d.*)).v1 from sdata d where r='ФИО сотрудника' and v2=l.who::text),(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=l.who::text),who::text) from log l join packets p on l.refid in (p.id, o.id) where p.order_id=o.id and l.who is not null order by l.id desc limit 1) as who,
+(select to_char(date,'yyyy-mm-dd hh24:mi:ss') from log l join packets p on l.refid in (p.id, o.id) where p.order_id=o.id order by l.id desc limit 1) as touched,
+(select address from objects where id=o.object_id) as address
 from (
-select
-o.*,
-(select (id,event)::record from log l where refto='orders' and refid=o.id and not exists (select 1 from log where refto=l.refto and refid=l.refid and id<l.id)) as oevent,
-(
-select array_agg((l.id,l.event)::record) as a from log l where refto='packets' and refid in (select id from packets where order_id=o.id) and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)
-) as pevents
-from (
-select * from orders o
+select *
+from orders o
 where
 %s
 order by o.id desc %s
 ) o
-) o
-left join objects j on j.id=o.object_id
-},join(" and ",keys %where),$limit),$filter,map($where{$_},keys %where));
+\,join(" and ",keys %where),$limit),$filter,map(@{arrayref $_},grep {$_ ne 'novalue'} values %where));
 	
 	return $result;
 
