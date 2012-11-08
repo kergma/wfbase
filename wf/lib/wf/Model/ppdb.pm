@@ -789,23 +789,27 @@ sub search_packets
 	$self->connect() or return undef;
 
 	my %where;
-	$where{"1=?"}='1';
+
+	$where{qq/(o.sp::text in (select item from items where souid=? and sp_name is not null)
+or o.id in (select refid from log where refto='orders' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
+or p.id in (select refid from log where refto='packets' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
+)
+/}=[$cc->user->{souid},$cc->user->{souid},$cc->user->{souid}];
+
 	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
 	$where{"o.sp = ?"}=$filter->{sp} if $filter->{sp};
+	$where{qq\(o.id in (select refid from log where refto='orders' and  who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))
+or p.id in (select refid from log where refto='packets' and who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?))))
+\}=[$filter->{who},$filter->{who}] if $filter->{who};
 	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
-	$where{"exists (select 1 from log l where id>=least(o.id, p.id) and refid in (p.id,o.id) and who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))"}=$filter->{who} if $filter->{who};
 	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
 	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
 
-	my $w=join (" and ",keys %where);
-	my $result=query($self,qq{
-create table pg_temp.vi as select ?::uuid as id;
-insert into pg_temp.vi select d.v2::uuid from pg_temp.vi join sdata d on d.r='принадлежит структурному подразделению' and d.v1=vi.id::text;
-insert into pg_temp.vi select (s.items_of).item::uuid from (select items_of(id::text) from pg_temp.vi) s join sdata d on d.r='наименование структурного подразделения' and d.v2=(s.items_of).item;
+	my $result=query($self,sprintf(qq{
 select
 s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, l.id as status_event,
 (select name from files where id=s.container) as container_name,
@@ -815,20 +819,13 @@ select p.id as packet_id, o.sp, type, container
 from packets p
 left join orders o on o.id=p.order_id
 where 
-(
-o.sp in (select id from pg_temp.vi) 
-or p.id in (select refid from log l join vi on l.who=vi.id and refto='packets')
-or o.id in (select refid from log l join vi on l.who=vi.id and refto='orders')
-) and 
-$w
-order by p.id desc
-$limit
+%s
+order by p.id desc %s
 ) s
 left join log l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
 ;
 --select * from pg_temp.vi;
-},$filter,$cc->user->{souid},map($where{$_},keys %where)
-);
+},join(" and ",keys %where),$limit),$filter,map(@{arrayref $_},grep {$_ ne 'novalue'} values %where));
 	
 	return $result;
 
