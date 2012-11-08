@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
 -->
 
-<link rel="stylesheet" href="[% c.uri_for('/css/hmenu.css') %]" />
+<link rel="stylesheet" href="/css/hmenu.css" />
 
 <!--[if IE]>
 <style type="text/css" media="screen">
@@ -34,7 +34,7 @@
 <div id="menu">
 
 <div id="auth" style="float:right">
-	<div title="[% IF c.user.fio %][% c.user.fio %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.souid %]">[% c.user.username %] (<a href="[% c.uri_for('/auth/logout') %]">Выход</a>)</div>
+	<div title="[% IF c.user.fio %][% c.user.fio %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.souid %]">[% c.user.username %] (<a href="/auth/logout">Выход</a>)</div>
 </div>
 
 <ul>

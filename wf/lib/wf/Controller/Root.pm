@@ -75,7 +75,7 @@ sub auto :Private
 	if (!$c->user_exists)
 	{
 		$c->response->redirect('/auth/login');
-		$c->flash->{redirect_after_login} = '' . $c->req->uri;
+		$c->flash->{redirect_after_login} = '/' . $c->req->path;
 		return 0;
 	};
     

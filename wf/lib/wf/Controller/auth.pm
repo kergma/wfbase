@@ -1,13 +1,8 @@
 package wf::Controller::auth;
+use Moose;
+use namespace::autoclean;
 
-use strict;
-use warnings;
-use base 'Catalyst::Controller::FormBuilder';
-use Data::Dumper;
-
-no warnings 'uninitialized';
-
-__PACKAGE__->config( 'Controller::FormBuilder' => {form_path => File::Spec->catfile( wf->path_to('root'))});
+BEGIN {extends 'Catalyst::Controller::FormBuilder'; }
 
 =head1 NAME
 
@@ -22,20 +17,15 @@ Catalyst Controller.
 =cut
 
 
-=head2 index 
+=head2 index
 
 =cut
 
-sub index :Path :Args(0)
-{
-	my ( $self, $c ) = @_;
+sub index :Path :Args(0) {
+    my ( $self, $c ) = @_;
 
-	$c->response->body("user exists '".$c->user_exists()."' user '".$c->user."'<br>".Dumper($c->user));
+    $c->response->body('Matched wf::Controller::auth in auth.');
 }
-
-=head1 login
-Форма входа в систему
-=cut
 
 sub login :Local :Form
 {
@@ -48,39 +38,28 @@ sub login :Local :Form
 	$form->method('post');
 
 	my $body=$form->render();
-	if ( $form->submitted ) {
-		if ( $form->validate ) {
-			if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
-			{
-				$c->response->redirect('/');
-				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
-				return;
-				$body.="authentication succeeded in default<br><pre>".Dumper($c);
-			}
-			else
-			{
-				$body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
-			}
+        if ( $form->submitted ) {
+            if ( $form->validate ) {
+		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
+		{
+			$c->response->redirect('/');
+			$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
+			return;
+		    $body.="authentication succeeded in default<br><pre>".Dumper($c);
 		}
-		else {
-			$c->stash->{ERROR}          = "INVALID FORM";
-			$c->stash->{invalid_fields} = [ grep { !$_->validate } $form->fields ];
+		else
+		{
+		    $body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
 		}
-	}
-	if ($c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
-	{
-		my $uid;
-		$uid=$1 if $c->request->{env}->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
-		my $user;
-		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
-		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
-	};
+            }
+            else {
+                $c->stash->{ERROR}          = "INVALID FORM";
+                $c->stash->{invalid_fields} = [ grep { !$_->validate } $form->fields ];
+            }
+        }
 
-	$c->response->body($body);
+    $c->response->body($body);
 }
-=head1 login
-Форма входа в систему
-=cut
 
 sub logout :Local
 {
@@ -91,13 +70,15 @@ sub logout :Local
 
 =head1 AUTHOR
 
-,,,
+Pushkinsv
 
 =head1 LICENSE
 
-This library is free software, you can redistribute it and/or modify
+This library is free software. You can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 =cut
+
+#__PACKAGE__->meta->make_immutable;
 
 1;
