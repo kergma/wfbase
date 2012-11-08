@@ -6,14 +6,13 @@
 <meta http-equiv="cache-control" content="no-cache">
 <title>[% heading %] [% heading and " - " %] [% template.title or "БД пользователей" %]</title>
 
-<!--
-<link rel="stylesheet" href="/css/blueprint/screen.css" type="text/css" media="screen, projection">
-<link rel="stylesheet" href="/css/blueprint/print.css" type="text/css" media="print">
--->
+<script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
+<script type="text/javascript" src="/scripts/informer.js"></script>
 
-<link rel="stylesheet" href="/css/hmenu.css" />
+<link rel="stylesheet" href="/css/common.css" />
 
 <!--[if IE]>
+
 <style type="text/css" media="screen">
 	#menu{float:none;} /* This is required for IE to avoid positioning bug when placing content first in source. */
 	/* IE Menu CSS */
@@ -28,42 +27,43 @@
 
 </head>
 <body>
-	
-<div style="text-align:right;color:lightgray">[% version %]</div>
 
-<div id="menu">
-
-<div id="auth" style="float:right">
-	<div title="[% IF c.user.fio %][% c.user.fio %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.souid %]">[% c.user.username %] (<a href="/auth/logout">Выход</a>)</div>
+[% IF c.check_any_user_role('разработчик') %]
+<div style="text-align: right; width: 100%">
+	<div style="text-align:right;color:lightgray">[% version %]</div>
 </div>
+[% END %]
 
-<ul>
-<li>Просмотр
-<ul>
-	<li><a href="/rec/search">Записи</a></li>
-	<li><a href="/sys/isdata">Данные ИС</a></li>
-</ul>
-</li>
-</ul>
+<div><!-- main-menu -->
+	<div id="auth">
+		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
+		<div id="logout"><a href="/auth/logout">выход</a></div>
+	</div>
+	<ul id="main-menu">
+		<li><a href="#">Просмотр</a>
+			[% IF c.check_any_user_role('оператор','диспетчер','администратор') %]
+			<ul>
+				<li><a href="/rec/search">Записи</a></li>
+				<li><a href="/sys/isdata">Данные ИС</a></li>
+			</ul>
+			[% END %]
+		</li>
 
-<ul>
-<li>Создать
-<ul>
-	<li><a href="/rec/create">Запись</a></li>
-</ul>
-</li>
-</ul>
-
-<ul>
-<li>Синхронизация
-<ul>
-	<li><a href="/sync/status">Статус</a></li>
-	<li><a href="/sync/perform">Выполнить</a></li>
-</ul>
-</li>
-</ul>
-
-</div><!-- end menu -->
+		[% IF c.check_any_user_role('оператор','диспетчер','администратор') %]	
+		<li><a href="#">Создать</a>
+			<ul>
+				<li><a href="/rec/create">Запись</a></li>
+			</ul>
+		</li>
+		<li><a href="#">Синхронизация</a>
+			<ul>
+				<li><a href="/sync/status">Статус</a></li>
+				<li><a href="/sync/perform">Выполнить</a></li>
+			</ul>
+		</li>
+		[% END %]
+	</ul>
+</div> <!-- end menu -->
 
 <div id="header">
     [%# Insert the page title -%]
@@ -75,15 +75,16 @@
     [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
-[% IF c.check_user_roles('Разработчик') %]
+[% IF c.check_user_roles('разработчик') %]
 <pre>
-[% data.dump %]
+[% result.dump %]
+[% dump %]
 </pre>
-[% END %][%# check_user_roles('Разработчик') %]
+[% END %][%# check_user_roles('разработчик') %]
 </div><!-- end content -->
 
 <div id="footer">
-<br><img src="/rosinv-logo.png"/>
+<img src="/static/images/rosinv-logo.png"/>
 </div>
 
 </body>

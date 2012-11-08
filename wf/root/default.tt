@@ -7,7 +7,7 @@
 [% sections=[]%]
 [% FOREACH s=data.display_.order_ %]
 [% sections.push(data.$s)%]
-[% END%][%# data.displat_order_ %]
+[% END%][%# data.display_order_ %]
 [%END%][%#data.display_.order_%]
 [% FOREACH s=sections %]
 [% IF s.text%]<div>[%s.text%]</div>[%END%]
