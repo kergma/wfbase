@@ -28,7 +28,7 @@
 </head>
 <body>
 
-[% IF c.check_any_user_role('разработчик') %]
+[% IF c.check_any_user_role('Разработчик') %]
 <div style="text-align: right; width: 100%">
 	<div style="text-align:right;color:lightgray">[% version %]</div>
 </div>
@@ -41,15 +41,12 @@
 	</div>
 	<ul id="main-menu">
 		<li><a href="#">Просмотр</a>
-			[% IF c.check_any_user_role('оператор','диспетчер','администратор') %]
 			<ul>
 				<li><a href="/rec/search">Записи</a></li>
 				<li><a href="/sys/isdata">Данные ИС</a></li>
 			</ul>
-			[% END %]
 		</li>
 
-		[% IF c.check_any_user_role('оператор','диспетчер','администратор') %]	
 		<li><a href="#">Создать</a>
 			<ul>
 				<li><a href="/rec/create">Запись</a></li>
@@ -61,7 +58,6 @@
 				<li><a href="/sync/perform">Выполнить</a></li>
 			</ul>
 		</li>
-		[% END %]
 	</ul>
 </div> <!-- end menu -->
 
@@ -75,12 +71,12 @@
     [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
-[% IF c.check_user_roles('разработчик') %]
+[% IF c.check_user_roles('Разработчик') %]
 <pre>
 [% result.dump %]
 [% dump %]
 </pre>
-[% END %][%# check_user_roles('разработчик') %]
+[% END %][%# check_user_roles('Разработчик') %]
 </div><!-- end content -->
 
 <div id="footer">
