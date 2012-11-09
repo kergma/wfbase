@@ -51,15 +51,29 @@ Attempt to render a view, if needed.
 sub begin :Private
 {
 	my ($self, $c) = @_;
-	$c->stash->{template}='default.tt' unless -f wf->path_to('root')."/".$c->request->{action}.".tt";
 }
 
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	$c->{stash}->{form}//=$c->controller->formbuilder if ref($c->action)=~ /FormBuilder/;
-	use Data::Dumper;
-	$c->{stash}->{data}->{dump}=Dumper($c->stash->{data});
+	$c->stash->{template}='swalker.tt' unless defined $c->{stash}->{template} or -f wf->path_to('root')."/".$c->request->{action}.".tt";
+	$c->{stash}->{stash}=$c->{stash};
+	if ($c->stash->{formbuilder})
+	{
+		$c->{stash}->{FormBuilder}->fieldsubs(1);
+		$c->{stash}->{formbuilder}->{display}={order=>[keys %{$c->{stash}->{FormBuilder}->{tmplvar}}]} unless defined $c->{stash}->{formbuilder}->{display};
+		$c->{stash}->{formbuilder}->{form}=$c->{stash}->{FormBuilder} unless defined $c->{stash}->{formbuilder}->{form};
+	};
+	eval {
+		use Data::Dumper;
+		$Data::Dumper::Sortkeys=sub {
+			my ($hash) = @_;
+			return [grep {!/FormBuilder|^_?form$/} keys %$hash];
+		};
+		undef $Data::Dumper::Sortkeys if defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
+
+		$c->{stash}->{dump}=Dumper($c->stash);
+	} if $c->check_any_user_role('Разработчик');
 }
 
 sub auto :Private
