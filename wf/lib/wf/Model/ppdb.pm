@@ -677,7 +677,7 @@ sub read_table
 
 	while(my $r=$sth->fetchrow_hashref)
 	{
-		push @{$result{elements}}, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+		push @{$result{rows}}, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
 	};
 	$sth->finish;
 
@@ -925,7 +925,7 @@ sub read_run_status
 	$self->connect() or return undef;
 
 	my %data;
-	#$data{running}{elements}=read_table($self,"select * from run where completed is null and started is not null order by id desc");
+	#$data{running}{rows}=read_table($self,"select * from run where completed is null and started is not null order by id desc");
 	$data{running}=read_table($self,qq/
 select r.id, r.id as run_id, r.task_id, t.value as task_name, to_char(r.started,'yyyy-mm-dd hh24:mi:ss') as started, now()-started as last
 from run r 
@@ -934,7 +934,7 @@ where completed is null and started is not null
 order by r.id
 /
 );
-	$data{running}{elements}=[] unless defined $data{running}{elements};
+	$data{running}{rows}=[] unless defined $data{running}{rows};
 
 	$data{scheduled}=read_table($self,qq/
 select r.id, r.id as run_id, r.task_id, t.value as task_name, to_char(r.at,'yyyy-mm-dd hh24:mi:ss') as at, at-now() as in
@@ -944,7 +944,7 @@ where completed is null and started is null
 order by r.id desc
 /
 );
-	$data{scheduled}{elements}=[] unless defined $data{scheduled}{elements};
+	$data{scheduled}{rows}=[] unless defined $data{scheduled}{rows};
 
 	$data{completed}=read_table($self,qq/
 select r.id, r.id as run_id, r.task_id, t.value as task_name, to_char(r.started,'yyyy-mm-dd hh24:mi:ss') as started, to_char(r.completed,'yyyy-mm-dd hh24:mi:ss') as completed, now()-completed as last
@@ -954,7 +954,7 @@ where completed is not null and completed>=date_trunc('day',now())
 order by r.id desc
 /
 );
-	$data{completed}{elements}=[] unless defined $data{completed}{elements};
+	$data{completed}{rows}=[] unless defined $data{completed}{rows};
 	return \%data;
 }
 sub query
