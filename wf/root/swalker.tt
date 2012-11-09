@@ -5,7 +5,7 @@
 [%counter=0%]
 [%- WHILE queue.size and counter<1000%]
 	[%- node=queue.shift %]
-	[%- IF node.footer %][%INCLUDE hashr.tt n=node.footer footer=1%]</div>[% NEXT %][% END %]
+	[%- IF node.footer %][%INCLUDE noder.tt n=node.footer footer=1%]</div>[% NEXT %][% END %]
 	[%- value=node.value -%]
 
 	[%-# защита от зацикливания %]
@@ -18,19 +18,19 @@
 	[%counter=counter+1%]
 
  	[%-# тип узла: s - скаляр, a - массив, h - хеш %]
-	[%- type="s" %]
-	[%- IF value and !value.VERSION and !value.substr(0,1).length and value.size %][% type="a" %][% END %]
-	[%- IF value.keys %][% type="h" %][% END %]
-	[%- IF value.VERSION %][% type="o" %][% END %]
-	[%- IF type=="s"%][%INCLUDE scalar.tt n=node%][%NEXT%][%END%]
+	[%- node.type="s" %]
+	[%- IF value and !value.VERSION and !value.substr(0,1).length and value.size %][% node.type="a" %][% END %]
+	[%- IF value.keys %][% node.type="h" %][% END %]
+	[%- IF value.VERSION %][% node.type="o" %][% END %]
+	[%- IF node.type=="s"%][%INCLUDE scalar.tt n=node%][%NEXT%][%END%]
 	
 	[%- keys=value.keys %]
 	[%- IF value.display.defined %][% keys=value.display.keys %][% END %]
 	[%- IF value.display.order %][% keys=value.display.order %][% END -%]
 
 	[%-# рендеринг %]
-	[%-#%]<div class="container [% type %]">[% queue.unshift({footer=>node}) %]
-	[%INCLUDE hashr.tt n=node%]
+	[%-#%]<div class="container [% node.type %]">[% queue.unshift({footer=>node}) %]
+	[%INCLUDE noder.tt n=node%]
 	[%IF node.stop%][%NEXT%][%END%]
 
 	[%-# обход %]
@@ -38,7 +38,7 @@
 	[%- FOREACH key IN keys %]
 		[%- q.push({value=>value.$key,title=>value.display.$key,key=>key}) %]
 	[%- END %][%# keys -%]
-	[%IF type=="a"%]
+	[%IF node.type=="a"%]
 		[%- FOREACH v IN value %]
 			[%- q.push({value=>v,title=>node.title,key=>"$node.key item"}) %]
 		[%- END %]
@@ -46,3 +46,15 @@
 	[%- queue=q.merge(queue) -%]
 
 [%- END %]
+[%IF stash.reload and !stash.reloaded%]
+<script language="JavaScript" type="text/javascript">
+<!--
+window.onload=pageRefresh;
+function pageRefresh()
+{
+        setTimeout("window.location.reload()",[%stash.reload%]);
+}
+//-->
+</script>
+[%stash.reloaded="yes"%]
+[%END%]

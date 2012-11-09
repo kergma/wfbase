@@ -1,0 +1,12 @@
+[%# vim: set filetype=tt2: -%]
+[%UNLESS footer%]
+[%- keys=h.keys%]
+[%- IF h.display.order%][% keys=h.display.order%][%END%]
+<table border="1">
+[%FOREACH k=keys%]
+<tr>
+<td>[%IF h.display.$k%][%h.display.$k%][%ELSE%][%k%][%END%]</td><td>[%h.$k%]</td>
+</tr>
+[%END%]
+</table>
+[%END%][%# footer %]
