@@ -87,7 +87,7 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 			#servers=>['127.0.0.1:11211'],
 
 			class => "Cache::FileCache",
-			cache_root=>'/home/worker/tmp/wfcache',
+			cache_root=>'/storage/tmp/wfcache',
 			default_expires_in=>300,
 		},
 	},
