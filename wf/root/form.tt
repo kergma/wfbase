@@ -6,11 +6,10 @@
 <table>
 [% FOREACH field=form.fields %]
 	[%-IF field.type=='hidden' %][%field.render%][%NEXT%][%END%]
-	[%-IF field.type=="text"%][%field.size=PERL%]print int(1.33*(length(Encode::decode('utf8',$stash->{field}->value()))//0)) [%END%][%test%][%END%]
 	<tr>
 	<td style="vertical-align:top">[%field.label%]</td>
-	<td>[%IF field.renderer%][%t="$field.renderer"_".tt" h=field%]
-		[%INCLUDE "$t" f=field%]
+	<td>[%IF field.renderer%][%t="$field.renderer"_".tt"%]
+		[%INCLUDE "$t"%]
 	[%ELSE%]
 		[%IF field.readonly%]
 			[%field.value%]
@@ -25,16 +24,7 @@
 </table>
 [%ELSE%][%#footer%]
 <div style="margin-top:1em;margin-left:2em">
-[% form.submit UNLESS form.submitonchange%]
-[% IF form.submitonchange%]
-<script>
-$(function(){
-	$('#[%form.submitonchange%]').change(function(e){
-		$(e.target).closest('form').submit();
-	});
-});
-</script>
-[%END%]
+[% form.submit %]
 </div>
 [% form.end %]
 [%END%]
