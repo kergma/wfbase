@@ -42,6 +42,14 @@ sub ACCEPT_CONTEXT
 	return $self;
 }
 
+sub arrayref;
+sub arrayref($)
+{
+	my ($v)=@_;
+	return $v if ref $v eq 'ARRAY';
+	return [$v];
+}
+
 sub authinfo_password
 {
 	my ($self,$authinfo)=@_;
@@ -105,11 +113,11 @@ sub search_records
 	$where{'recid=?'}=$filter->{recid} if $filter->{recid};
 	$where{'lower(defvalue)~lower(?)'}=$filter->{defvalue} if $filter->{defvalue};
 	$where{'lower(defvalue)~lower(?)'}=~s/ +/\.\*/ if $filter->{defvalue};
-	$where{'rectype=?'}=$filter->{rectype} if $filter->{rectype};
+	$where{sprintf("rectype in (%s)",join(',', map {'?'} @{arrayref $filter->{rectype}}))}=arrayref $filter->{rectype} if $filter->{rectype};
 	my $limit=$filter->{limit}||0;
 	$limit+0 or $limit="";
 	$limit and $limit="limit $limit";
-	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),values %where);
+	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),map(@{arrayref $_}, grep {$_ ne 'novalue'} values %where));
 }
 sub read_record
 {
@@ -126,7 +134,7 @@ from
 sub rectypes
 {
 	my ($self)=@_;
-	return cached_array_ref($self,qq/select distinct rectype from recv where rectype is not null order by 1/);
+	return cached_array_ref($self,q/select distinct regexp_replace(rectype,'^.*PKI$','Объект PKI') from recv where rectype is not null order by 1/);
 }
 sub islist
 {
@@ -213,7 +221,7 @@ create or replace view recv as
 select distinct
 rec.v2 as recid,
 def.v1 as defvalue,
-case when def.r ='наименование списка' then 'Список' when def.r ='наименование ИС' then 'Информационная система' when def.r='наименование структурного подразделения' then 'Структурное подразделение' when def.r='ФИО сотрудника' then 'Сотрудник' when def.r like '%учётной записи%' then 'Учётная запись' else null end as rectype
+case when def.r ='наименование списка' then 'Список' when def.r ='наименование ИС' then 'Информационная система' when def.r='наименование структурного подразделения' then 'Структурное подразделение' when def.r='ФИО сотрудника' then 'Сотрудник' when def.r like '%учётной записи%' then 'Учётная запись' when def.r='наименование сертификата PKI' then 'Сертификат PKI' when def.r='наименование ключа PKI' then 'Ключ PKI' else null end as rectype
 from  data rec
 left join data def on def.v2=rec.v2 and (def.r like 'наименование %' or def.r like 'ФИО %' or def.r like 'имя входа учётной записи')
 /);
@@ -279,7 +287,33 @@ left join data sync_is on sync_is.r='синхронизация ИС' and sync_i
 where def_is.r='наименование ИС'
 ) s order by synctime nulls last
 \);
- }
+}
+
+sub read_pkey
+{
+	my $self=shift;
+	my $id=shift;
+	return {
+		id=>$id,
+		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and v1=? order by id limit 1",undef,$id),
+		name=>db::selectval_scalar("select v1 from data where r = 'наименование ключа PKI' and v2=? order by id limit 1",undef,$id)
+	};
+}
+
+sub store_pkey
+{
+	my $self=shift;
+	my $data=shift;
+	db::do("update data set v1=? where r = 'наименование ключа PKI' and v2=?",undef,$data->{name},$data->{id})>0
+		or db::do("insert into data (v1,r,v2) values (?,'наименование ключа PKI',?)",undef,$data->{name},$data->{id});
+
+	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$data->{owner});
+	$r=~s/^(наименование|ФИО)/ключ PKI/;
+
+	db::do("update data set v2=? where r =? and v1=?",undef,$data->{owner},$r,$data->{id})>0
+		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$data->{id},$r,$data->{owner});
+		
+}
 
 package db;
 

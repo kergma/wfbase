@@ -50,6 +50,7 @@
 		<li><a href="#">Создать</a>
 			<ul>
 				<li><a href="/rec/create">Запись</a></li>
+				<li><a href="/pki/genpkey">Ключ PKI</a></li>
 			</ul>
 		</li>
 		<li><a href="#">Синхронизация</a>
