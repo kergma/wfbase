@@ -9,7 +9,7 @@
 	<tr>
 	<td style="vertical-align:top">[%field.label%]</td>
 	<td>[%IF field.renderer%][%t="$field.renderer"_".tt"%]
-		[%INCLUDE "$t"%]
+		[%INCLUDE "$t" f=field%]
 	[%ELSE%]
 		[%IF field.readonly%]
 			[%field.value%]
