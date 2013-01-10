@@ -114,6 +114,7 @@ sub search_records
 	$where{'lower(defvalue)~lower(?)'}=$filter->{defvalue} if $filter->{defvalue};
 	$where{'lower(defvalue)~lower(?)'}=~s/ +/\.\*/ if $filter->{defvalue};
 	$where{sprintf("rectype in (%s)",join(',', map {'?'} @{arrayref $filter->{rectype}}))}=arrayref $filter->{rectype} if $filter->{rectype};
+	$where{"exists (select 1 from data where (v1=recid or v2=recid) and (v1=? or v2=?))"}=[$filter->{related},$filter->{related}] if $filter->{related};
 	my $limit=$filter->{limit}||0;
 	$limit+0 or $limit="";
 	$limit and $limit="limit $limit";
@@ -295,7 +296,7 @@ sub read_pkey
 	my $id=shift;
 	return {
 		id=>$id,
-		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and v1=? order by id limit 1",undef,$id),
+		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and r not like '% сертификата PKI' and v1=? order by id limit 1",undef,$id),
 		name=>db::selectval_scalar("select v1 from data where r = 'наименование ключа PKI' and v2=? order by id limit 1",undef,$id)
 	};
 }
@@ -313,6 +314,47 @@ sub store_pkey
 	db::do("update data set v2=? where r =? and v1=?",undef,$data->{owner},$r,$data->{id})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$data->{id},$r,$data->{owner});
 		
+}
+
+sub read_pki_owner
+{
+	my $self=shift;
+	my $id=shift;
+	my ($d,$t)=recdef($self,$id);
+	return {
+		id=>$t?$id:undef,
+		name=>$d,
+		type=>$t,
+		pkey=>read_pkey($self,db::selectval_scalar("select v1 from data where r like 'ключ PKI %' and v2=? order by id limit 1",undef,$id)),
+	};
+	
+}
+
+sub store_cert
+{
+	my $self=shift;
+	my $data=shift;
+
+	db::setv1($data->{name},'наименование сертификата PKI',$data->{id});
+
+	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$data->{owner});
+	$r=~s/^(наименование|ФИО)/сертификат PKI/;
+	db::setv2($data->{id},$r,$data->{owner});
+
+	my $pkey=ref $data->{pkey} eq 'HASH'?$data->{pkey}->{id}:$data->{pkey};
+	db::setv1($pkey,'ключ PKI сертификата PKI',$data->{id}) if $pkey;
+		
+}
+sub read_cert
+{
+	my $self=shift;
+	my $id=shift;
+	return {
+		id=>$id,
+		owner=>db::selectval_scalar("select v2 from data where r like 'сертификат PKI %' and v1=? order by id limit 1",undef,$id),
+		name=>db::selectval_scalar("select v1 from data where r = 'наименование сертификата PKI' and v2=? order by id limit 1",undef,$id),
+		pkey=>read_pkey($self,db::selectval_scalar("select v1 from data where r = 'ключ PKI сертификата PKI' and v2=? order by id limit 1",undef,$id)),
+	};
 }
 
 package db;
@@ -359,4 +401,19 @@ sub selectval_scalar
 	return $row->[0];
 }
 
+sub setv1
+{
+	my ($v1,$r,$v2)=@_;
+	
+	db::do("update data set v1=? where r =? and v2=?",undef,$v1,$r,$v2)>0
+		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$v1,$r,$v2);
+}
+
+sub setv2
+{
+	my ($v1,$r,$v2)=@_;
+	
+	db::do("update data set v2=? where r =? and v1=?",undef,$v2,$r,$v1)>0
+		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$v1,$r,$v2);
+}
 1;
