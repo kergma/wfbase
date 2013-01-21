@@ -67,7 +67,8 @@
 		[% IF c.check_any_user_role('отправляющий','разработчик') %]
 		<li><a href="#">Загрузка</a>
 			<ul>
-				<li><a href="/upload/packet">Загрузить пакет</a></li>
+				<li><a href="/upload/packet">Пакет</a></li>
+				<li><a href="/ordproc/req">Запрос сведений</a></li>
 			</ul>
 		</li>
 		[% END %]
