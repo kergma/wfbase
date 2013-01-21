@@ -1101,4 +1101,38 @@ sub get_who_email
 	return $r->{email} if $r;
 }
 
+sub identify_order
+{
+	my $self=shift;
+	my %h=@_>1?@_:(id=>shift);
+	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
+
+	$a->{error}='Не указан номер объекта в заказе' and return $a unless $a->{objno};
+	$a->{ordspec}=~/^(\d{4})(\d\d)(\d{6})0{6}$/ or $a->{error}='Некорректный номер заказа';
+	return $a if $a->{error};
+	my ($otd,$year,$ordno6)=($1,substr([localtime()]->[5]+1900,0,2).$2,$3);
+
+	$a->{year}=$year;
+	$a->{otd}=db::selectrow_hashref("select v1 as code, v2 as spuid, (select shortest(v1) from data where r='наименование структурного подразделения' and v2=d.v2) as spname from data d where r='код структурного подразделения' and v1=?",undef,$otd);
+
+
+	$a->{order}=db::selectrow_hashref(qq/
+select * from orders o where substr(ordno,3,6)=? and sp=? and year=? and objno=?
+and (o.sp::text in (select item from items where souid=? and sp_name is not null)
+or o.id in (select refid from log where refto='orders' and (who::text in (select item from items where souid=? and sp_name is not null)) or who=?))
+/,undef,$ordno6,$a->{otd}->{spuid},$year,$a->{objno},$cc->user->{souid},$cc->user->{souid},$cc->user->{souid});
+
+	$a->{order_data}=read_order_data($self,$a->{order}->{id}) if $a->{order};
+
+	$a->{permission}=1 if $a->{order};
+	$a->{permission}=db::selectval_scalar(qq/
+select 1 from items i1
+join items i2 on i2.container=i1.item
+where i1.souid=? and i2.container=?
+/,undef,$cc->user->{souid},$a->{otd}->{spuid}) unless $a->{permission};
+	$a->{error}="Доступ запрещен к отделению  с кодом $otd" and return $a unless $a->{permission};
+	return $a;
+
+}
+
 1;
