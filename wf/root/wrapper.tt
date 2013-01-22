@@ -68,7 +68,7 @@
 		<li><a href="#">Загрузка</a>
 			<ul>
 				<li><a href="/upload/packet">Пакет</a></li>
-				<li><a href="/ordproc/req">Запрос сведений</a></li>
+				<li><a href="/reqproc/create">Запрос сведений</a></li>
 			</ul>
 		</li>
 		[% END %]
@@ -95,7 +95,7 @@
 		</li>
 		<li><a href="#">Обработка</a>
 			<ul>
-				<li><a href="/log/browse">Просмотр журнала</a></li>
+				<li><a href="/reqproc/view">Сведения ГКН</a></li>
 			</ul>
 		</li>
 		[% END %]
