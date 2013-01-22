@@ -1122,6 +1122,7 @@ and (o.sp::text in (select item from items where souid=? and sp_name is not null
 or o.id in (select refid from log where refto='orders' and (who::text in (select item from items where souid=? and sp_name is not null)) or who=?))
 /,undef,$ordno6,$a->{otd}->{spuid},$year,$a->{objno},$cc->user->{souid},$cc->user->{souid},$cc->user->{souid});
 
+	$a->{order_data}=undef;
 	$a->{order_data}=read_order_data($self,$a->{order}->{id}) if $a->{order};
 
 	$a->{permission}=1 if $a->{order};
