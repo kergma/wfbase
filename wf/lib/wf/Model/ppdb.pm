@@ -1136,4 +1136,65 @@ where i1.souid=? and i2.container=?
 
 }
 
+
+sub read_reqdata
+{
+	my $self=shift;
+	my $id=shift;
+	my $r=db::selectrow_hashref(qq\
+select p.id as packet_id,p.order_id,o.object_id,j.address,j.cadastral_number,
+(select value from packet_data where id=p.id and key_id='1e265362-1d99-d881-8a54-d317a67454ff') as reqtype,
+(select value from packet_data where id=p.id and key_id='1e265282-e637-c6c1-9555-8312c307bb5d') as customer,
+(select value from packet_data where id=p.id and key_id='1e265220-7516-b761-838a-db3fd92bfa89') as reqno,
+(select date from log where refto='packets' and refid=p.id and event='зарегистрирован' order by id desc limit 1) as reqd,
+(select value from packet_data where id=p.id and key_id='1e26524c-6fd1-f0e1-b776-b3d0eb2e4ac6') as paidno,
+(select date from log where refto='packets' and refid=p.id and event='оплачен' order by id desc limit 1) as paid,
+(select value from packet_data where id=p.id and key_id='1e265289-0f14-6de1-99af-cf099e10bd98') as amount,
+null as returns
+from packets p
+join orders o on o.id=p.order_id
+join objects j on j.id=o.object_id
+where p.id=?
+\,undef,$id);
+	return $r;
+}
+
+sub requests_list
+{
+	my $self=shift;
+	my %h=@_>1?@_:(id=>shift);
+	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
+	my $r=read_table($self,q/
+select p.id as packet_id, p.order_id, o.object_id, j.address, j.cadastral_number, null as reqno, null as paidno, null as return_id
+from packets p 
+join orders o on o.id=p.order_id
+join objects j on j.id=o.object_id
+where p.type='запрос'/);
+	foreach my $r (@{$r->{rows}})
+	{
+		$r->{reqno}=db::selectval_scalar("select value from packet_data where id=? and key_id=?",undef,$r->{packet_id},'1e265220-7516-b761-838a-db3fd92bfa89');
+		$r->{paidno}=db::selectval_scalar("select value from packet_data where id=? and key_id=?",undef,$r->{packet_id},'1e26524c-6fd1-f0e1-b776-b3d0eb2e4ac6');
+	};
+	return $r;
+
+}
+
+sub update_req
+{
+	my $self=shift;
+	my $p=shift;
+	my $r=shift;
+	$r=read_reqdata($self,$p->{id}) unless $r;
+
+	foreach (qw/reqtype customer reqno paidno amount/)
+	{
+		packetproc::store_keydata($p->{$_},$_,$p->{id},"packet_data","reqproc") if $p->{$_} ne $r->{$_};
+	};
+	log_event($self,event=>'зарегистрирован',date=>$p->{reqd},who=>$cc->{souid},refto=>'packets',refid=>$p->{id}) if $p->{reqd} and !$r->{reqd};
+	db::do("update log set date=? where refto='packets' and refid=? and event='зарегистрирован'",undef,$p->{reqd},$p->{id}) if $p->{reqd} and $r->{reqd} and $p->{reqd} ne $r->{reqd};
+
+	log_event($self,event=>'оплачен',date=>$p->{reqd},who=>$cc->{souid},refto=>'packets',refid=>$p->{id}) if $p->{paid} and !$r->{paid};
+	db::do("update log set date=? where refto='packets' and refid=? and event='оплачен'",undef,$p->{paid},$p->{id}) if $p->{paid} and $r->{paid} and $p->{paid} ne $r->{paid};
+	return $p;
+}
 1;
