@@ -1107,7 +1107,11 @@ sub identify_order
 	my %h=@_>1?@_:(id=>shift);
 	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
 
-	$a->{error}='Не указан номер объекта в заказе' and return $a unless $a->{objno};
+	unless ($a->{objno})
+	{
+		$a->{error}='Не указан номер объекта в заказе';
+		return $a ;
+	};
 	$a->{ordspec}=~/^(\d{4})(\d\d)(\d{6})0{6}$/ or $a->{error}='Некорректный номер заказа';
 	return $a if $a->{error};
 	my ($otd,$year,$ordno6)=($1,substr([localtime()]->[5]+1900,0,2).$2,$3);
@@ -1190,11 +1194,11 @@ sub update_req
 	{
 		packetproc::store_keydata($p->{$_},$_,$p->{id},"packet_data","reqproc") if $p->{$_} ne $r->{$_};
 	};
-	log_event($self,event=>'зарегистрирован',date=>$p->{reqd},who=>$cc->{souid},refto=>'packets',refid=>$p->{id}) if $p->{reqd} and !$r->{reqd};
-	db::do("update log set date=? where refto='packets' and refid=? and event='зарегистрирован'",undef,$p->{reqd},$p->{id}) if $p->{reqd} and $r->{reqd} and $p->{reqd} ne $r->{reqd};
+	log_event($self,event=>'зарегистрирован',date=>$p->{reqd},who=>$cc->user->{souid},refto=>'packets',refid=>$p->{id}) if $p->{reqd} and !$r->{reqd};
+	db::do("update log set date=?,who=? where refto='packets' and refid=? and event='зарегистрирован'",undef,$p->{reqd},$cc->user->{souid},$p->{id}) if $p->{reqd} and $r->{reqd} and $p->{reqd} ne $r->{reqd};
 
-	log_event($self,event=>'оплачен',date=>$p->{reqd},who=>$cc->{souid},refto=>'packets',refid=>$p->{id}) if $p->{paid} and !$r->{paid};
-	db::do("update log set date=? where refto='packets' and refid=? and event='оплачен'",undef,$p->{paid},$p->{id}) if $p->{paid} and $r->{paid} and $p->{paid} ne $r->{paid};
+	log_event($self,event=>'оплачен',date=>$p->{reqd},who=>$cc->user->{souid},refto=>'packets',refid=>$p->{id}) if $p->{paid} and !$r->{paid};
+	db::do("update log set date=?,who=? where refto='packets' and refid=? and event='оплачен'",undef,$p->{paid},$cc->user->{souid},$p->{id}) if $p->{paid} and $r->{paid} and $p->{paid} ne $r->{paid};
 	return $p;
 }
 1;
