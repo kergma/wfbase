@@ -6,7 +6,8 @@ use base 'Catalyst::View::TT';
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
 	INCLUDE_PATH => [wf->path_to('root')],
-	WRAPPER => 'wrapper.tt'
+	WRAPPER => 'wrapper.tt',
+	EVAL_PERL=>1
 );
 $Template::Directive::WHILE_MAX = 0;
 
