@@ -6,6 +6,7 @@
 <table>
 [% FOREACH field=form.fields %]
 	[%-IF field.type=='hidden' %][%field.render%][%NEXT%][%END%]
+	[%-IF field.type=="text"%][%field.size=PERL%]print int(1.33*length(Encode::decode('utf8','[%field.value%]'))) [%END%][%test%][%END%]
 	<tr>
 	<td style="vertical-align:top">[%field.label%]</td>
 	<td>[%IF field.renderer%][%t="$field.renderer"_".tt"%]
@@ -15,7 +16,6 @@
 			[%field.value%]
 			<input type="hidden" name="[%field.name%]" value='[%field.value%]'/>
 		[%ELSE%]
-			[%IF field.type=="text"%][%field.size=PERL%]print int(1.33*length(Encode::decode('utf8','[%field.value%]'))) [%END%][%test%][%END%]
 			[%field.render%]
 		[%END%]
 	[%END%]</td>
