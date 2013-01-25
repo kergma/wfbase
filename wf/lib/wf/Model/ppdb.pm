@@ -1201,4 +1201,18 @@ sub update_req
 	db::do("update log set date=?,who=? where refto='packets' and refid=? and event='оплачен'",undef,$p->{paid},$cc->user->{souid},$p->{id}) if $p->{paid} and $r->{paid} and $p->{paid} ne $r->{paid};
 	return $p;
 }
+
+sub present
+{
+	my $self=shift;;
+	my $format=shift||'%Y-%m-%d';
+	my $present=$cc->cache->get("present");
+	unless ($present)
+	{
+		$present={time=>str2time(db::selectval_scalar('select timestamp_from_uuid1o(present())')),uuid=>db::selectval_scalar('select present()')};
+		$cc->cache->set("present",$present);
+	};
+	return $present->{uuid} if $format eq 'uuid';
+	return time2str($format,$present->{time});
+}
 1;

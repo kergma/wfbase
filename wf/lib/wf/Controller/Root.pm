@@ -80,6 +80,7 @@ sub auto :Private
 	my ($self, $c) = @_;
 	srand();
 	$c->stash->{version}=$wf::VERSION;
+	$c->stash->{present}=$c->model->present();
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;
