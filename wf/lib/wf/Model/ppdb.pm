@@ -1150,9 +1150,11 @@ select p.id as packet_id,p.order_id,o.object_id,j.address,j.cadastral_number,
 (select value from packet_data where id=p.id and key_id='1e265362-1d99-d881-8a54-d317a67454ff') as reqtype,
 (select value from packet_data where id=p.id and key_id='1e265282-e637-c6c1-9555-8312c307bb5d') as customer,
 (select value from packet_data where id=p.id and key_id='1e265220-7516-b761-838a-db3fd92bfa89') as reqno,
-(select date from log where refto='packets' and refid=p.id and event='зарегистрирован' order by id desc limit 1) as reqd,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='принят' order by id desc limit 1) as accepted,
+(select note from log where refto='packets' and refid=p.id and event='отклонён' order by id desc limit 1) as rejected,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='зарегистрирован' order by id desc limit 1) as reqd,
 (select value from packet_data where id=p.id and key_id='1e26524c-6fd1-f0e1-b776-b3d0eb2e4ac6') as paidno,
-(select date from log where refto='packets' and refid=p.id and event='оплачен' order by id desc limit 1) as paid,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='оплачен' order by id desc limit 1) as paid,
 (select value from packet_data where id=p.id and key_id='1e265289-0f14-6de1-99af-cf099e10bd98') as amount,
 null as returns
 from packets p
@@ -1163,21 +1165,44 @@ where p.id=?
 	return $r;
 }
 
-sub requests_list
+sub reqproc_lists
 {
 	my $self=shift;
 	my %h=@_>1?@_:(id=>shift);
 	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
-	my $r=read_table($self,q/
-select p.id as packet_id, p.order_id, o.object_id, j.address, j.cadastral_number, null as reqno, null as paidno, null as return_id
-from packets p 
+	my $r={
+		processing=>read_table($self,q/
+select
+j.address,r.value as reqno,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='принят' order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='зарегистрирован' order by id desc limit 1) as reqd,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='оплачен' order by id desc limit 1) as paid,
+p.id as packet_id, o.id as order_id, j.id as object_id
+from packets p
 join orders o on o.id=p.order_id
 join objects j on j.id=o.object_id
-where p.type='запрос'/);
-	foreach my $r (@{$r->{rows}})
-	{
-		$r->{reqno}=db::selectval_scalar("select value from packet_data where id=? and key_id=?",undef,$r->{packet_id},'1e265220-7516-b761-838a-db3fd92bfa89');
-		$r->{paidno}=db::selectval_scalar("select value from packet_data where id=? and key_id=?",undef,$r->{packet_id},'1e26524c-6fd1-f0e1-b776-b3d0eb2e4ac6');
+left join packet_data r on r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
+where p.type='запрос'
+and not exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
+and not exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
+and p.id>present() and o.id>present() and r.id>present()
+/),
+		completed=>read_table($self,q/
+select
+j.address,r.value as reqno,
+(select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='отклонён' order by id desc limit 1) as rejected,
+(select p2.id from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения') as return,
+p.id as packet_id, o.id as order_id, j.id as object_id
+from packets p
+join orders o on o.id=p.order_id
+join objects j on j.id=o.object_id
+left join packet_data r on r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
+where p.type='запрос'
+and ( exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
+or exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
+)
+and p.id>present() and o.id>present() and r.id>present()
+/),
 	};
 	return $r;
 
@@ -1194,6 +1219,13 @@ sub update_req
 	{
 		packetproc::store_keydata($p->{$_},$_,$p->{id},"packet_data","reqproc") if $p->{$_} ne $r->{$_};
 	};
+	
+	log_event($self,event=>'принят',date=>$p->{accepted},who=>$cc->user->{souid},refto=>'packets',refid=>$p->{id}) if $p->{accepted} and !$r->{accepted};
+	db::do("update log set date=?,who=? where refto='packets' and refid=? and event='принят'",undef,$p->{accepted},$cc->user->{souid},$p->{id}) if $p->{accepted} and $r->{accepted} and $p->{accepted} ne $r->{accepted};
+
+	log_event($self,event=>'отклонён',note=>$p->{rejected},who=>$cc->user->{souid},refto=>'packets',refid=>$p->{id}) if $p->{rejected} and !$r->{rejected};
+	db::do("update log set note=?,who=? where refto='packets' and refid=? and event='отклонён'",undef,$p->{rejected},$cc->user->{souid},$p->{id}) if $p->{rejected} and $r->{rejected} and $p->{rejected} ne $r->{rejected};
+
 	log_event($self,event=>'зарегистрирован',date=>$p->{reqd},who=>$cc->user->{souid},refto=>'packets',refid=>$p->{id}) if $p->{reqd} and !$r->{reqd};
 	db::do("update log set date=?,who=? where refto='packets' and refid=? and event='зарегистрирован'",undef,$p->{reqd},$cc->user->{souid},$p->{id}) if $p->{reqd} and $r->{reqd} and $p->{reqd} ne $r->{reqd};
 
