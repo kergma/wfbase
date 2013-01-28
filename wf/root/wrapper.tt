@@ -96,11 +96,13 @@
 				<li><a href="/edit/insert/log_old?who=[% c.user.username %]">Событие</a></li>
 			</ul>
 		</li>
+		[% IF c.check_any_user_role('администратор') %]	
 		<li><a href="#">Обработка</a>
 			<ul>
 				<li><a href="/reqproc/list">Сведения ГКН</a></li>
 			</ul>
 		</li>
+		[% END %]
 		[% END %]
 
 		[% IF c.check_any_user_role('администратор','разработчик') %]
