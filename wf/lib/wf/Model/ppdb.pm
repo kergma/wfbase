@@ -1205,7 +1205,9 @@ and ( exists (select 1 from packet_data r2 join packets p2 on p2.id>present() an
 or exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
 )
 and p.id>present() and o.id>present()
-order by p.id
+and p.id>uuid_generate_v1o(current_date-30)
+order by p.id desc
+limit 100
 /),
 	};
 	return $r;
