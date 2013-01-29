@@ -2,6 +2,7 @@ package wf::Model::ppdb;
 
 use strict;
 use warnings;
+no warnings 'uninitialized';
 use parent 'Catalyst::Model';
 use DBI;
 use Date::Format;
@@ -1156,10 +1157,11 @@ select p.id as packet_id,p.order_id,o.object_id,j.address,j.cadastral_number,
 (select value from packet_data where id=p.id and key_id='1e26524c-6fd1-f0e1-b776-b3d0eb2e4ac6') as paidno,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='оплачен' order by id desc limit 1) as paid,
 (select value from packet_data where id=p.id and key_id='1e265289-0f14-6de1-99af-cf099e10bd98') as amount,
-null as returns
+(select p2.id from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения') as return
 from packets p
 join orders o on o.id=p.order_id
 join objects j on j.id=o.object_id
+left join packet_data r on r.id>present() and r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
 where p.id=?
 \,undef,$id);
 	return $r;
@@ -1186,6 +1188,7 @@ where p.type='запрос'
 and not exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
 and not exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
 and p.id>present() and o.id>present()
+order by p.id
 /),
 		completed=>read_table($self,q/
 select
@@ -1202,6 +1205,7 @@ and ( exists (select 1 from packet_data r2 join packets p2 on p2.id>present() an
 or exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
 )
 and p.id>present() and o.id>present()
+order by p.id
 /),
 	};
 	return $r;
