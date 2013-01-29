@@ -1181,11 +1181,11 @@ p.id as packet_id, o.id as order_id, j.id as object_id
 from packets p
 join orders o on o.id=p.order_id
 join objects j on j.id=o.object_id
-left join packet_data r on r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
+left join packet_data r on r.id>present() and r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
 where p.type='запрос'
 and not exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
 and not exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
-and p.id>present() and o.id>present() and r.id>present()
+and p.id>present() and o.id>present()
 /),
 		completed=>read_table($self,q/
 select
@@ -1196,12 +1196,12 @@ p.id as packet_id, o.id as order_id, j.id as object_id
 from packets p
 join orders o on o.id=p.order_id
 join objects j on j.id=o.object_id
-left join packet_data r on r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
+left join packet_data r on r.id>present() and r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
 where p.type='запрос'
 and ( exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
 or exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
 )
-and p.id>present() and o.id>present() and r.id>present()
+and p.id>present() and o.id>present()
 /),
 	};
 	return $r;
