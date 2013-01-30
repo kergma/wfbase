@@ -100,6 +100,11 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 
 __PACKAGE__->config->{"Plugin::Cache"}->{backend}=__PACKAGE__->config->{"Plugin::Cache"}->{backends}->{fast};
 
+__PACKAGE__->config->{"Plugin::Session"} =
+{
+	unlink_on_exit=>0
+};
+
 # Start the application
 __PACKAGE__->setup();
 
