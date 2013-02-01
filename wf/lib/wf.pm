@@ -82,6 +82,12 @@ __PACKAGE__->config->{"Plugin::Cache"} =
 		page_size => '1024k'
 	},
 };
+
+__PACKAGE__->config->{"Plugin::Session"} =
+{
+	unlink_on_exit=>0
+};
+
 # Start the application
 __PACKAGE__->setup();
 
