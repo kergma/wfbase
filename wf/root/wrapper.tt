@@ -51,7 +51,7 @@
 			<ul>
 				<li><a href="/rec/create">Запись</a></li>
 				<li><a href="/pki/genpkey">Ключ PKI</a></li>
-				<li><a href="/pki/crcert">Сертификат PKI</a></li>
+				<li><a href="/pki/crreq">Запрос сертификата PKI</a></li>
 			</ul>
 		</li>
 		<li><a href="#">Синхронизация</a>
