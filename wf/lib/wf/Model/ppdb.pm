@@ -355,6 +355,20 @@ sub get_refto_list
 	return cached_array_ref($self,"select refto from log_old where refto is not null group by refto order by refto");
 }
 
+sub get_reqproc_splist
+{
+	my ($self,$souid)=@_;
+	return options_list($self,{cache_key=>$souid},qq/
+select d.v1 as spid, def.v1 as spdef
+from
+(select * from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)) c
+join data d on d.v2=c.item and d.r='используется в структурном подразделении'
+join data def on def.v2=d.v1 and def.r like 'наименование%'
+order by 2
+/,$souid);
+};
+
+
 sub authinfo_password
 {
 	my ($self,$authinfo)=@_;
@@ -387,6 +401,8 @@ where lo_so.r='логин сотрудника' and lo_so.v1=?
 
 	push @{$data{roles}}, $authinfo->{username};
 	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
+
+	push @{$data{roles}}, 'запрашивающий' if db::selectval_scalar("select 1 from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)",undef,$data{souid});
 
 	$data{otd}='';
 
@@ -1163,7 +1179,8 @@ join orders o on o.id=p.order_id
 join objects j on j.id=o.object_id
 left join packet_data r on r.id>present() and r.id=p.id and r.key_id='1e265220-7516-b761-838a-db3fd92bfa89'
 where p.id=?
-\,undef,$id);
+and o.sp::text in ( select d.v1 from (select * from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)) c join data d on d.v2=c.item and d.r='используется в структурном подразделении')
+\,undef,$id,$cc->user->{souid});
 	return $r;
 }
 
@@ -1188,8 +1205,9 @@ where p.type='запрос'
 and not exists (select 1 from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения')
 and not exists (select 1 from log where id>present() and refto='packets' and refid=p.id and event='отклонён')
 and p.id>present() and o.id>present()
+and o.sp::text in ( select d.v1 from (select * from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)) c join data d on d.v2=c.item and d.r='используется в структурном подразделении')
 order by p.id
-/),
+/,$cc->user->{souid}),
 		completed=>read_table($self,q/
 select
 j.address,r.value as reqno,
@@ -1206,9 +1224,10 @@ or exists (select 1 from log where id>present() and refto='packets' and refid=p.
 )
 and p.id>present() and o.id>present()
 and p.id>uuid_generate_v1o(current_date-30)
+and o.sp::text in ( select d.v1 from (select * from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)) c join data d on d.v2=c.item and d.r='используется в структурном подразделении')
 order by p.id desc
 limit 100
-/),
+/,$cc->user->{souid}),
 	};
 	return $r;
 
