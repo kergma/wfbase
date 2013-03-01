@@ -105,11 +105,14 @@ sub read_pkey
 	my %h=@_>1?@_:(id=>shift);
 	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
 
+
+	$d->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$d->{record});
 	return {
+		id=>$d->{id},
 		record=>$d->{record},
 		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and v1=? order by id limit 1",undef,$d->{record}),
 		name=>db::selectval_scalar("select v1 from data where r = 'наименование ключа PKI' and v2=? order by id limit 1",undef,$d->{record}),
-		content=>$d->{id}?db::selectval_scalar("select content from pki where id=?",undef,$d->{id}):db::selectval_scalar("select content from pki where record=? order by id desc limit 1",undef,$d->{record})
+		content=>db::selectval_scalar("select content from pki where id=?",undef,$d->{id}),
 	};
 }
 
@@ -118,7 +121,8 @@ sub read_object
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
 	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
-	eval{ $a->{content}=db::selectval_scalar("select content from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record}; };
+	eval{ $a->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record};  };
+	eval{ $a->{content}=db::selectval_scalar("select content from pki where id=?",undef,$a->{id}) if $a->{id}; };
 	return $a unless $a->{content};
 	$a->{type}='crt' if $a->{content} =~ /CERTIFICATE---/s;
 	$a->{type}='csr' if $a->{content} =~ /REQUEST---/s;
@@ -146,8 +150,8 @@ sub store_cert
 	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=? where record=? and content=?",undef,$d->{type},$d->{record},$d->{content})>0
-		or db::do("insert into pki (record,type,content) values (?,?,?)",undef,$d->{record},$d->{type},$d->{content});
+	db::do("update pki set type=?, key=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{record},$d->{content})>0
+		or db::do("insert into pki (record,type,content,key) values (?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id});
 }
 
 sub create_request
