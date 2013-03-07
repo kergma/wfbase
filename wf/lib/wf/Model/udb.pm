@@ -9,6 +9,8 @@ use Digest::MD5;
 use Encode;
 use Date::Format;
 
+no warnings 'uninitialized';
+
 =head1 NAME
 
 wf::Model::udb - Catalyst Model
@@ -222,7 +224,7 @@ create or replace view recv as
 select distinct
 rec.v2 as recid,
 def.v1 as defvalue,
-case when def.r ='наименование списка' then 'Список' when def.r ='наименование ИС' then 'Информационная система' when def.r='наименование структурного подразделения' then 'Структурное подразделение' when def.r='ФИО сотрудника' then 'Сотрудник' when def.r like '%учётной записи%' then 'Учётная запись' when def.r='наименование сертификата PKI' then 'Сертификат PKI' when def.r='наименование ключа PKI' then 'Ключ PKI' else null end as rectype
+case when def.r ='наименование списка' then 'Список' when def.r ='наименование ИС' then 'Информационная система' when def.r='наименование структурного подразделения' then 'Структурное подразделение' when def.r='ФИО сотрудника' then 'Сотрудник' when def.r like '%учётной записи%' then 'Учётная запись' when def.r='наименование запроса сертификата PKI' then 'Запрос сертификата PKI' when def.r='наименование сертификата PKI' then 'Сертификат PKI' when def.r='наименование ключа PKI' then 'Ключ PKI' else null end as rectype
 from  data rec
 left join data def on def.v2=rec.v2 and (def.r like 'наименование %' or def.r like 'ФИО %' or def.r like 'имя входа учётной записи')
 /);
@@ -290,72 +292,6 @@ where def_is.r='наименование ИС'
 \);
 }
 
-sub read_pkey
-{
-	my $self=shift;
-	my $id=shift;
-	return {
-		id=>$id,
-		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and r not like '% сертификата PKI' and v1=? order by id limit 1",undef,$id),
-		name=>db::selectval_scalar("select v1 from data where r = 'наименование ключа PKI' and v2=? order by id limit 1",undef,$id)
-	};
-}
-
-sub store_pkey
-{
-	my $self=shift;
-	my $data=shift;
-	db::do("update data set v1=? where r = 'наименование ключа PKI' and v2=?",undef,$data->{name},$data->{id})>0
-		or db::do("insert into data (v1,r,v2) values (?,'наименование ключа PKI',?)",undef,$data->{name},$data->{id});
-
-	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$data->{owner});
-	$r=~s/^(наименование|ФИО)/ключ PKI/;
-
-	db::do("update data set v2=? where r =? and v1=?",undef,$data->{owner},$r,$data->{id})>0
-		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$data->{id},$r,$data->{owner});
-		
-}
-
-sub read_pki_owner
-{
-	my $self=shift;
-	my $id=shift;
-	my ($d,$t)=recdef($self,$id);
-	return {
-		id=>$t?$id:undef,
-		name=>$d,
-		type=>$t,
-		pkey=>read_pkey($self,db::selectval_scalar("select v1 from data where r like 'ключ PKI %' and v2=? order by id limit 1",undef,$id)),
-	};
-	
-}
-
-sub store_cert
-{
-	my $self=shift;
-	my $data=shift;
-
-	db::setv1($data->{name},'наименование сертификата PKI',$data->{id});
-
-	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$data->{owner});
-	$r=~s/^(наименование|ФИО)/сертификат PKI/;
-	db::setv2($data->{id},$r,$data->{owner});
-
-	my $pkey=ref $data->{pkey} eq 'HASH'?$data->{pkey}->{id}:$data->{pkey};
-	db::setv1($pkey,'ключ PKI сертификата PKI',$data->{id}) if $pkey;
-		
-}
-sub read_cert
-{
-	my $self=shift;
-	my $id=shift;
-	return {
-		id=>$id,
-		owner=>db::selectval_scalar("select v2 from data where r like 'сертификат PKI %' and v1=? order by id limit 1",undef,$id),
-		name=>db::selectval_scalar("select v1 from data where r = 'наименование сертификата PKI' and v2=? order by id limit 1",undef,$id),
-		pkey=>read_pkey($self,db::selectval_scalar("select v1 from data where r = 'ключ PKI сертификата PKI' and v2=? order by id limit 1",undef,$id)),
-	};
-}
 
 package db;
 

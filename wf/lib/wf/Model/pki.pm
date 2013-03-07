@@ -33,9 +33,6 @@ it under the same terms as Perl itself.
 
 __PACKAGE__->meta->make_immutable;
 
-my $pkidir="$ENV{HOME}/pki";
-mkdir $pkidir unless -d $pkidir;
-
 my $cc;
 
 sub ACCEPT_CONTEXT
@@ -63,6 +60,52 @@ sub gen_pkey
 
 }
 
+sub read_object
+{
+	my $self=shift;
+	my %h=@_>1?@_:(record=>shift);
+	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
+	eval{ $a->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record};  };
+	eval{ $a->{content}=db::selectval_scalar("select content from pki where id=?",undef,$a->{id}) if $a->{id}; };
+	eval{ $a->{record}=db::selectval_scalar("select record from pki where id=?",undef,$a->{id}) if $a->{id}; };
+	return $a unless $a->{content};
+	$a->{type}='crt' if $a->{content} =~ /CERTIFICATE---/s;
+	$a->{type}='csr' if $a->{content} =~ /REQUEST---/s;
+	$a->{type}='key' if $a->{content} =~ /PRIVATE KEY/s;
+	$a->{encrypted}=1 if $a->{content} =~ /ENCRYPTED/s;
+
+	$a->{cdump}=`echo '$a->{content}' |openssl req -text -nameopt RFC2253` if $a->{type} eq 'csr';
+	$a->{cdump}=`echo '$a->{content}' |openssl x509 -text -nameopt RFC2253` if $a->{type} eq 'crt';
+	
+	if ($a->{cdump})
+	{
+		my $d=parse_cerdump($a->{cdump});
+		@$a{keys %$d}=values %$d;
+	};
+
+	$a->{owner}=db::selectval_scalar("select v2 from data where r ~ '^(ключ|сертификат|запрос) .*PKI .*' and v1=? order by id limit 1",undef,$a->{record}),
+	$a->{name}=db::selectval_scalar("select v1 from data where r like 'наименование %PKI' and v2=? order by id limit 1",undef,$a->{record}),
+
+	$a->{pkey}=read_object($self,id=>db::selectval_scalar("select key from pki where id=?",undef,$a->{id}));
+
+	return $a;
+}
+
+sub read_owner
+{
+       my $self=shift;
+       my $record=shift;
+       my ($d,$t)=$cc->model->recdef($record);
+       return {
+               id=>$t?$record:undef,
+               name=>$d,
+               type=>$t,
+               pkey=>read_object($self,db::selectval_scalar("select v1 from data where r like 'ключ PKI %' and v2=? order by id limit 1",undef,$record)),
+       };
+
+}
+
+
 sub store_pkey
 {
 	my $self=shift;
@@ -84,74 +127,25 @@ sub store_pkey
 	return $d;
 }
 
-sub read_cert
-{
-	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
-
-	return {
-		record=>$d->{record},
-		owner=>db::selectval_scalar("select v2 from data where r like 'сертификат PKI %' and v1=? order by id limit 1",undef,$d->{record}),
-		name=>db::selectval_scalar("select v1 from data where r = 'наименование сертификата PKI' and v2=? order by id limit 1",undef,$d->{record}),
-		pkey=>read_pkey($self,db::selectrow_hasref("select id,record from pki where record = ? order by id desc limit 1",undef,$d->{record})),
-		content=>db::selectval_scalar("select content from pki where record=? order by id desc limit 1",undef,$d->{record}),
-	};
-}
-
-sub read_pkey
-{
-	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
-
-
-	$d->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$d->{record});
-	return {
-		id=>$d->{id},
-		record=>$d->{record},
-		owner=>db::selectval_scalar("select v2 from data where r like 'ключ PKI %' and v1=? order by id limit 1",undef,$d->{record}),
-		name=>db::selectval_scalar("select v1 from data where r = 'наименование ключа PKI' and v2=? order by id limit 1",undef,$d->{record}),
-		content=>db::selectval_scalar("select content from pki where id=?",undef,$d->{id}),
-	};
-}
-
-sub read_object
-{
-	my $self=shift;
-	my %h=@_>1?@_:(record=>shift);
-	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
-	eval{ $a->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record};  };
-	eval{ $a->{content}=db::selectval_scalar("select content from pki where id=?",undef,$a->{id}) if $a->{id}; };
-	return $a unless $a->{content};
-	$a->{type}='crt' if $a->{content} =~ /CERTIFICATE---/s;
-	$a->{type}='csr' if $a->{content} =~ /REQUEST---/s;
-	$a->{type}='key' if $a->{content} =~ /PRIVATE KEY/s;
-	$a->{encrypted}=1 if $a->{content} =~ /ENCRYPTED/s;
-
-	$a->{owner}=db::selectval_scalar("select v2 from data where r ~ '^(ключ|сертификат|запрос) .*PKI .*' and v1=? order by id limit 1",undef,$a->{record}),
-	$a->{name}=db::selectval_scalar("select v1 from data where r like 'наименование %PKI' and v2=? order by id limit 1",undef,$a->{record}),
-
-	return $a;
-}
-
 sub store_cert
 {
 	my $self=shift;
 	my %h=@_>1?@_:(id=>shift);
 	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
 
-	db::do("update data set v1=? where r = 'наименование сертификата PKI' and v2=?",undef,$d->{name},$d->{record})>0
-		or db::do("insert into data (v1,r,v2) values (?,'наименование сертификата PKI',?)",undef,$d->{name},$d->{record});
+	my $defr=$d->{type} eq 'csr'?'запроса сертификата PKI':'сертификата PKI';
+	db::do("update data set v1=? where r = 'наименование $defr' and v2=?",undef,$d->{name},$d->{record})>0
+		or db::do("insert into data (v1,r,v2) values (?,'наименование $defr',?)",undef,$d->{name},$d->{record});
 
+	$defr=$d->{type} eq 'csr'?'запрос сертификата PKI':'сертификат PKI';
 	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$d->{owner});
-	$r=~s/^(наименование|ФИО)/сертификат PKI/;
+	$r=~s/^(наименование|ФИО)/$defr/;
 
 	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=?, key=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{record},$d->{content})>0
-		or db::do("insert into pki (record,type,content,key) values (?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id});
+	db::do("update pki set type=?, key=?, signet=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{signet}->{id},$d->{record},$d->{content})>0
+		or db::do("insert into pki (record,type,content,key,signet) values (?,?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id},$d->{signet}->{id});
 }
 
 sub create_request
@@ -180,55 +174,47 @@ sub create_request
 	return $a;
 }
 
-
-sub read_file
+sub create_cert
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
 	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
-	$a->{file}||=$a->{tempname};
-	$a->{content}=db::selectval_scalar("select content from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record};
-	$a->{written}=$a->{file}=tmpnam() if $a->{content};
-	write_file($a->{written},$a->{content}) if $a->{written};
-	use Data::Dumper;
-	print Dumper($a);
-	$a->{error}="Файл не найден $a->{file}" and return $a unless -f $a->{file};
+	
+	my $req=$a->{req}->{content};
 
-	$a->{content}=read_file($a->{file}) unless $a->{content};
-	$a->{encoding}=$a->{content} =~ /--BEGIN.*--END/s?'PEM':'DER';
-	$a->{type}='crt' if $a->{encoding} eq 'PEM' and $a->{content} =~ /CERTIFICATE---/s;
-	$a->{type}='csr' if $a->{encoding} eq 'PEM' and $a->{content} =~ /REQUEST---/s;
-	$a->{type}='key' if $a->{encoding} eq 'PEM' and $a->{content} =~ /PRIVATE KEY/s;
+	my $keyfile=tmpnam();
+	write_file($keyfile,$a->{signet}->{pkey}->{content});
+	$a->{error}="Ошибка записи файла ключа $keyfile" and return $a unless -f $keyfile;
+
+	my $cafile=tmpnam();
+	write_file($cafile,$a->{signet}->{content});
+	$a->{error}="Ошибка записи файла сертификата $cafile" and unlink $keyfile and return $a unless -f $cafile;
 
 	my $out;
-
-	$out=`openssl x509 -in $a->{file} -text -nameopt RFC2253 2>&1` if $a->{ext} eq 'crt' and $a->{encoding} eq 'PEM';
-	$out=`openssl req -in $a->{file} -text -batch -nameopt RFC2253 2>&1` if $a->{ext} eq 'csr' and $a->{encoding} eq 'PEM';
-	$out=`openssl pkey -in $a->{file} -passin pass:$a->{passphrase} 2>&1`if $a->{ext} eq 'key' and $a->{encoding} eq 'PEM'; 
-
-	if ($a->{encoding} eq 'DER')
+	if ($a->{req}->{id} eq $a->{signet}->{id})
 	{
-		$out=`openssl x509 -in $a->{file} -inform DER -text -nameopt RFC2253 2>&1`;
-		$out=`openssl req -in $a->{file} -inform DER -text -batch -nameopt RFC2253 2>&1` if $out=~ /error/si;
-		$out=`openssl pkey -in $a->{file} -inform DER -passin pass:$a->{passphrase} 2>&1` if $out=~ /error/si;
-		$a->{type}='crt' if $out =~ /CERTIFICATE---/s;
-		$a->{type}='csr' if $out->{content} =~ /REQUEST---/s;
-		$a->{type}='key' if $out->{content} =~ /PRIVATE KEY/s;
+		my $cmd="echo '$req' | openssl x509 -req -days $a->{days} -signkey $keyfile -passin pass:$a->{passphrase}";
+		$out=`$cmd 2>&1`;
 	};
-	$a->{error}=$out and $out if $out=~/error/is;
+	unless ($out)
+	{
+		my $serial=time();
+		my $cmd="echo '$req' | openssl x509 -days $a->{days} -req -CA $cafile -CAkey $keyfile -passin pass:$a->{passphrase} -set_serial $serial";
+		$out=`$cmd 2>&1`;
+	};
+	unlink $keyfile, $cafile;
 
-	unlink $a->{written} if $a->{written};
-	
-	$a->{desc}=1;
+	$a->{error}={error=>'не удалость создать сертификат',pre=>$out,display=>{order=>[qw/error pre/]}} if $out =~ /error/mi;
+	return $a if $a->{error};
 
-	my $pkd=$cc->model->read_cert($a->{id});
-	@$a{keys %$pkd}=values %$pkd;
+	$a->{type}='crt';
+	$a->{success}=$a->{content}=$out unless $a->{error};
+	$a->{content}=~s/.*(-----BEGIN)/$1/ms;
+	$a->{pkey}=$a->{req}->{pkey};
 
-	my $d=parse_cerdump($out);
-	@$a{keys %$d}=values %$d;
-
+	store_cert($self,$a);
+		
 	return $a;
-
 }
 
 sub parse_cerdump
@@ -242,9 +228,6 @@ sub parse_cerdump
 	$data->{sh}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{subject}}} if $data->{subject};
 	$data->{ih}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{issuer}}} if $data->{issuer};
 	return $data;
-
-
-	
 }
 
 1;
