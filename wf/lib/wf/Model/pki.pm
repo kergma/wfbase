@@ -105,6 +105,19 @@ sub read_owner
 
 }
 
+sub search_object
+{
+	my $self=shift;
+	my $arg=shift;
+
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data o on o.r like '%PKI %' and o.v1=p.record::text where p.id=?",undef,$arg) if $arg=~/^\d+$/;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data o on o.r like '%PKI %' and o.v1=p.record::text where p.record=? order by p.id desc limit 1",undef,$arg) if $arg=~/^[a-f0-9\-]{36}/;
+
+	my ($name,$type)=($arg,undef);
+	($name,$type)=($1,$2) if $arg=~/(.*)\.(.*?)$/;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? and p.type=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end",undef,$name,$type,$cc->{souid}) if $type;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end",undef,$name,$cc->{souid});
+}
 
 sub store_pkey
 {
