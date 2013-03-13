@@ -1215,7 +1215,7 @@ order by p.id
 select
 j.address,r.value as reqno,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id and event='отклонён' order by id desc limit 1) as rejected,
-(select p2.id from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения') as return,
+(select max(p2.id) from packet_data r2 join packets p2 on p2.id>present() and p2.id=r2.id and r2.key_id=r.key_id where r2.id>present() and r2.value=r.value and p2.type='сведения') as return,
 p.id as packet_id, o.id as order_id, j.id as object_id
 from packets p
 join orders o on o.id=p.order_id
