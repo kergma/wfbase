@@ -65,9 +65,10 @@ join data ac_so on ac_so.r='учётная запись сотрудника' an
 left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
 left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
 where def_is.v2=? and def_is.r='наименование ИС'
-and lo_ac.v1=?
-},undef,$isuid,$authinfo->{username});
+and (lo_ac.v1=? or fio_so.v2=?)
+},undef,$isuid,$authinfo->{username},$authinfo->{uid});
 	$r or return undef;
+	$r->{passw}="***" if $authinfo->{uid} and !$authinfo->{username};
 	return $r->{passw};
 }
 
@@ -92,14 +93,14 @@ join data ac_so on ac_so.r='учётная запись сотрудника' an
 left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
 left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
 where def_is.v2=? and def_is.r='наименование ИС' 
-and lo_ac.v1=?
+and (lo_ac.v1=? or fio_so.v2=?)
 group by fio_so.v2,ac_so.v1,def_is.v2, lo_ac.v1, pw_ac.v1
-/,undef,$isuid,$authinfo->{username});
+/,undef,$isuid,$authinfo->{username},$authinfo->{uid});
+	$r->{password}='***' if $authinfo->{uid};
 	%data=(%data,%$r) if $r;
 
-	push @{$data{roles}}, $authinfo->{username};
+	push @{$data{roles}}, $data{username};
 	push @{$data{roles}}, split /, */, $data{props};
-
 
 	my $roles="'norole'";
 	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};

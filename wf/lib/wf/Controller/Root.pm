@@ -85,6 +85,13 @@ sub auto :Private
 	{
 		return 1;
 	};
+	
+	if ($c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
+	{
+		my $uid;
+		$uid=$1 if $c->request->{env}->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
+		$c->authenticate({uid=>$uid,password=>'***'}) if $uid;
+	};
 
 	if (!$c->user_exists)
 	{
