@@ -38,27 +38,35 @@ sub login :Local :Form
 	$form->method('post');
 
 	my $body=$form->render();
-        if ( $form->submitted ) {
-            if ( $form->validate ) {
-		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
-		{
-			$c->response->redirect('/');
-			$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
-			return;
-		    $body.="authentication succeeded in default<br><pre>".Dumper($c);
+	if ( $form->submitted ) {
+		if ( $form->validate ) {
+			if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
+			{
+				$c->response->redirect('/');
+				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
+				return;
+				$body.="authentication succeeded in default<br><pre>".Dumper($c);
+			}
+			else
+			{
+				$body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+			}
 		}
-		else
-		{
-		    $body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+		else {
+			$c->stash->{ERROR}          = "INVALID FORM";
+			$c->stash->{invalid_fields} = [ grep { !$_->validate } $form->fields ];
 		}
-            }
-            else {
-                $c->stash->{ERROR}          = "INVALID FORM";
-                $c->stash->{invalid_fields} = [ grep { !$_->validate } $form->fields ];
-            }
-        }
+	};
+	if ($c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
+	{
+		my $uid;
+		$uid=$1 if $c->request->{env}->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
+		my $user;
+		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
+		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
+	};
 
-    $c->response->body($body);
+	$c->response->body($body);
 }
 
 sub logout :Local
