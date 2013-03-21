@@ -51,7 +51,7 @@ sub gen_pkey
 
 	my $pp="";
 	$pp="-pass pass:$a->{passphrase1} -des3" if $a->{passphrase1};
-	my $out=`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 $pp 2>&1`;
+	my $out=`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:$a->{keysize} $pp 2>&1`;
 	$out=~s/(.*?)(-+BEGIN)/$2/s and $a->{out}=$1;
 	$a->{error}=$out if $out=~/error/si;
 	$a->{content}=$out unless $a->{error};
