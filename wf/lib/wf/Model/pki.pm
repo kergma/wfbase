@@ -47,7 +47,7 @@ sub gen_pkey
 {
 	my $self=shift;
 	my %h=@_>1?@_:(id=>shift);
-	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
+	my $a=ref $h{id}?$h{id}:\%h;
 
 	my $pp="";
 	$pp="-pass pass:$a->{passphrase1} -des3" if $a->{passphrase1};
@@ -64,7 +64,7 @@ sub read_object
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
-	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
+	my $a=ref $h{record}?$h{record}:\%h;
 	eval{ $a->{id}||=db::selectval_scalar("select id from pki where record=? order by id desc limit 1",undef,$a->{record}) if $a->{record};  };
 	eval{ $a->{content}=db::selectval_scalar("select content from pki where id=?",undef,$a->{id}) if $a->{id}; };
 	eval{ $a->{record}=db::selectval_scalar("select record from pki where id=?",undef,$a->{id}) if $a->{id}; };
@@ -91,6 +91,22 @@ sub read_object
 	return $a;
 }
 
+sub read_file
+{
+	my $self=shift;
+	my %h=@_>1?@_:(record=>shift);
+	my $a=ref $h{record}?$h{record}:\%h;
+	
+	$a->{content}=$a->{rawcontent} if $a->{rawcontent} =~ /----BEGIN/ms;
+	unless ($a->{content})
+	{
+		$a->{error}='Ошибочный формат файла';
+		return $a;
+	};
+	
+	return read_object($self,$a);
+}
+
 sub read_owner
 {
        my $self=shift;
@@ -110,8 +126,9 @@ sub search_object
 	my $self=shift;
 	my $arg=shift;
 
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data o on o.r like '%PKI %' and o.v1=p.record::text where p.id=?",undef,$arg) if $arg=~/^\d+$/;
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data o on o.r like '%PKI %' and o.v1=p.record::text where p.record=? order by p.id desc limit 1",undef,$arg) if $arg=~/^[a-f0-9\-]{36}/;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.id=?",undef,$arg) if $arg=~/^\d+$/;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.record=? order by p.id desc limit 1",undef,$arg) if $arg=~/^[a-f0-9\-]{36}/;
+	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where md5(p.content)=md5(?) order by p.id desc limit 1",undef,$arg) if $arg=~/^-----BEGIN/;
 
 	my ($name,$type)=($arg,shift);
 	($name,$type)=($1,$type||$2) if $arg=~/(.*)\.(.*?)$/;
@@ -123,19 +140,19 @@ sub store_pkey
 {
 	my $self=shift;
 	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
+	my $d=ref $h{id}?$h{id}:\%h;
 
-	db::do("update data set v1=? where r = 'наименование ключа PKI' and v2=?",undef,$d->{name},$d->{id})>0
-		or db::do("insert into data (v1,r,v2) values (?,'наименование ключа PKI',?)",undef,$d->{name},$d->{id});
+	db::do("update data set v1=? where r = 'наименование ключа PKI' and v2=?",undef,$d->{name},$d->{record})>0
+		or db::do("insert into data (v1,r,v2) values (?,'наименование ключа PKI',?)",undef,$d->{name},$d->{record});
 
 	my $r=db::selectval_scalar("select r from data where r ~ '^(наименование|ФИО)' and v2=?",undef,$d->{owner});
 	$r=~s/^(наименование|ФИО)/ключ PKI/;
 
-	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{id})>0
-		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{id},$r,$d->{owner});
+	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
+		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=? where record=? and content=?",undef,$d->{type},$d->{id},$d->{content})>0
-		or db::do("insert into pki (record,type,content) values (?,?,?)",undef,$d->{id},$d->{type},$d->{content});
+	db::do("update pki set type=? where record=? and content=?",undef,$d->{type},$d->{record},$d->{content})>0
+		or db::do("insert into pki (record,type,content) values (?,?,?)",undef,$d->{record},$d->{type},$d->{content});
 		
 	return $d;
 }
@@ -144,7 +161,7 @@ sub store_cert
 {
 	my $self=shift;
 	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id} eq 'HASH'?$h{id}:\%h;
+	my $d=ref $h{id}?$h{id}:\%h;
 
 	my $defr=$d->{type} eq 'csr'?'запроса сертификата PKI':'сертификата PKI';
 	db::do("update data set v1=? where r = 'наименование $defr' and v2=?",undef,$d->{name},$d->{record})>0
@@ -157,15 +174,29 @@ sub store_cert
 	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=?, key=?, signet=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{signet}->{id},$d->{record},$d->{content})>0
-		or db::do("insert into pki (record,type,content,key,signet) values (?,?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id},$d->{signet}->{id});
+	db::do("update pki set type=?, key=?, request=?, signet=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{req}->{id},$d->{signet}->{id},$d->{record},$d->{content})>0
+		or db::do("insert into pki (record,type,content,key,request,signet) values (?,?,?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id},$d->{req}->{id},$d->{signet}->{id});
+}
+
+sub store_object
+{
+	my $self=shift;
+	my %h=@_>1?@_:(id=>shift);
+	my $d=ref 
+	$h{id}?$h{id}:\%h;
+	
+	store_pkey($self,$d) if $d->{type} eq 'key';
+	store_cert($self,$d) if $d->{type} eq 'crt' or $d->{type} eq 'csr';
+	$d->{success}=1;
+	return $d;
+
 }
 
 sub create_request
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
-	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
+	my $a=ref $h{record}?$h{record}:\%h;
 	
 	my $keyfile=tmpnam();
 	write_file($keyfile,$a->{pkey}->{content});
@@ -191,7 +222,7 @@ sub create_cert
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
-	my $a=ref $h{record} eq 'HASH'?$h{record}:\%h;
+	my $a=ref $h{record}?$h{record}:\%h;
 	
 	my $req=$a->{req}->{content};
 
