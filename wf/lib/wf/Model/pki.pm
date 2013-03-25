@@ -202,10 +202,21 @@ sub create_request
 	write_file($keyfile,$a->{pkey}->{content});
 	$a->{error}="Ошибка записи файла ключа $keyfile" and return $a unless -f $keyfile;
 
+	my $conffile=tmpnam();
+	write_file($conffile,<<CONF);
+[ req ]
+distinguished_name = req_distinguished_name
+req_extensions = v3_req
+[ req_distinguished_name ]
+[ v3_req ]
+subjectAltName=$a->{'ext-subjectaltname'}
+CONF
 
-	my $cmd="openssl req -new -subj '$a->{subj}' -utf8 -key $keyfile -passin pass:$a->{passphrase}";
+	my $san=$a->{'ext-subjectaltname'}&&"-config $conffile";
+
+	my $cmd="openssl req -new -subj '$a->{subj}' -utf8 -key $keyfile -passin pass:$a->{passphrase} $san";
 	my $out=`$cmd 2>&1`;
-	unlink $keyfile;
+	unlink $keyfile,$conffile;
 
 	$a->{error}={error=>'не удалость создать запрос сертификата',pre=>$out,display=>{order=>[qw/error pre/]}} if $out =~ /error/mi;
 	return $a if $a->{error};
@@ -271,6 +282,7 @@ sub parse_cerdump
 	$dump=~/Issuer: (.*)$/m and $data->{issuer}=X500::DN->ParseRFC2253($1);
 	$data->{sh}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{subject}}} if $data->{subject};
 	$data->{ih}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{issuer}}} if $data->{issuer};
+	$dump=~/X509v3 Subject Alternative Name:\s+(\S.*?)\n/ms and $data->{'ext-subjectaltname'}=$1;
 	return $data;
 }
 
