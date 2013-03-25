@@ -33,6 +33,8 @@ it under the same terms as Perl itself.
 
 __PACKAGE__->meta->make_immutable;
 
+our @x509v3_config=qw/basicConstraints keyUsage extendedKeyUsage authorityKeyIdentifier subjectAltName issuserAltName authorityInfoAccess crlDistributionPoints issuingDistributionPoint policyConstraints inhibitAnyPolicy nameConstraints noCheck/;
+
 my $cc;
 
 sub ACCEPT_CONTEXT
@@ -202,19 +204,21 @@ sub create_request
 	write_file($keyfile,$a->{pkey}->{content});
 	$a->{error}="Ошибка записи файла ключа $keyfile" and return $a unless -f $keyfile;
 
+	my @exts=grep {$a->{'ext-'.lc($_)}} @x509v3_config;
 	my $conffile=tmpnam();
-	write_file($conffile,<<CONF);
+	open CONF,">$conffile";
+	print CONF <<CONF;
 [ req ]
 distinguished_name = req_distinguished_name
 req_extensions = v3_req
 [ req_distinguished_name ]
 [ v3_req ]
-subjectAltName=$a->{'ext-subjectaltname'}
 CONF
+	print CONF "$_=",$a->{'ext-'.lc($_)},"\n" foreach @exts;
+	close CONF;
+	my $exts="-config $conffile" if scalar @exts;
 
-	my $san=$a->{'ext-subjectaltname'}&&"-config $conffile";
-
-	my $cmd="openssl req -new -subj '$a->{subj}' -utf8 -key $keyfile -passin pass:$a->{passphrase} $san";
+	my $cmd="openssl req -new -subj '$a->{subj}' -utf8 -key $keyfile -passin pass:$a->{passphrase} $exts";
 	my $out=`$cmd 2>&1`;
 	unlink $keyfile,$conffile;
 
@@ -245,19 +249,26 @@ sub create_cert
 	write_file($cafile,$a->{signet}->{content});
 	$a->{error}="Ошибка записи файла сертификата $cafile" and unlink $keyfile and return $a unless -f $cafile;
 
+	my @exts=grep {$a->{'ext-'.lc($_)}} @x509v3_config;
+	my $extfile=tmpnam();
+	open EXT,">$extfile";
+	print EXT "$_=",$a->{'ext-'.lc($_)},"\n" foreach @exts;
+	close EXT;
+	my $exts="-extfile $extfile" if scalar @exts;
+
 	my $out;
 	if ($a->{req}->{id} eq $a->{signet}->{id})
 	{
-		my $cmd="echo '$req' | openssl x509 -req -days $a->{days} -signkey $keyfile -passin pass:$a->{passphrase}";
+		my $cmd="echo '$req' | openssl x509 -req -days $a->{days} -signkey $keyfile -passin pass:$a->{passphrase} $exts";
 		$out=`$cmd 2>&1`;
 	};
 	unless ($out)
 	{
 		my $serial=time();
-		my $cmd="echo '$req' | openssl x509 -days $a->{days} -req -CA $cafile -CAkey $keyfile -passin pass:$a->{passphrase} -set_serial $serial";
+		my $cmd="echo '$req' | openssl x509 -days $a->{days} -req -CA $cafile -CAkey $keyfile -passin pass:$a->{passphrase} -set_serial $serial $exts";
 		$out=`$cmd 2>&1`;
 	};
-	unlink $keyfile, $cafile;
+	unlink $keyfile, $cafile, $extfile;
 
 	$a->{error}={error=>'не удалость создать сертификат',pre=>$out,display=>{order=>[qw/error pre/]}} if $out =~ /error/mi;
 	return $a if $a->{error};
@@ -282,7 +293,8 @@ sub parse_cerdump
 	$dump=~/Issuer: (.*)$/m and $data->{issuer}=X500::DN->ParseRFC2253($1);
 	$data->{sh}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{subject}}} if $data->{subject};
 	$data->{ih}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{issuer}}} if $data->{issuer};
-	$dump=~/X509v3 Subject Alternative Name:\s+(\S.*?)\n/ms and $data->{'ext-subjectaltname'}=$1;
+	$dump=~/X509v3 Subject Alternative Name:( critical|)\s+(\S.*?)\n/ms and $data->{'ext-subjectaltname'}=$2;
+	$dump=~/X509v3 Basic Constraints:( critical|)\s+(\S.*?)\n/ms and $data->{'ext-basicconstraints'}=$2;
 	return $data;
 }
 
