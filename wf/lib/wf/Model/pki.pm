@@ -134,7 +134,8 @@ sub search_object
 
 	my ($name,$type)=($arg,shift);
 	($name,$type)=($1,$type||$2) if $arg=~/(.*)\.(.*?)$/;
-	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? and p.type=coalesce(nullif(?,'pub'),'key') join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end,p.id desc",undef,$name,$type,$cc->{souid}) if $type;
+	$type='key' if grep {$type eq $_} qw /pub usr p12/;
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? and p.type=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end,p.id desc",undef,$name,$type,$cc->{souid}) if $type;
 	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end,p.id desc",undef,$name,$cc->{souid});
 }
 
