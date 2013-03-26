@@ -85,6 +85,7 @@ sub auto :Private
 	{
 		return 1;
 	};
+	return 1 if $c->{request}->{action} eq 'pki';
 	
 	if (!$c->user_exists and $c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
 	{

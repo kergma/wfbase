@@ -93,7 +93,7 @@ sub read_object
 	return $a;
 }
 
-sub read_file
+sub read_file_509
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
@@ -128,14 +128,14 @@ sub search_object
 	my $self=shift;
 	my $arg=shift;
 
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.id=?",undef,$arg) if $arg=~/^\d+$/;
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.record=? order by p.id desc limit 1",undef,$arg) if $arg=~/^[a-f0-9\-]{36}/;
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where md5(p.content)=md5(?) order by p.id desc limit 1",undef,$arg) if $arg=~/^-----BEGIN/;
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.id=?",undef,$arg) if $arg=~/^\d+$/;
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where p.record=? order by p.id desc limit 1",undef,$arg) if $arg=~/^[a-f0-9\-]{36}/;
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p left join data o on o.r like '%PKI %' and o.v1=p.record::text where md5(p.content)=md5(?) order by p.id desc limit 1",undef,$arg) if $arg=~/^-----BEGIN/;
 
 	my ($name,$type)=($arg,shift);
 	($name,$type)=($1,$type||$2) if $arg=~/(.*)\.(.*?)$/;
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? and p.type=coalesce(nullif(?,'pub'),'key') join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end",undef,$name,$type,$cc->{souid}) if $type;
-	return db::selectrow_hashref("select p.id,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end",undef,$name,$cc->{souid});
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? and p.type=coalesce(nullif(?,'pub'),'key') join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end,p.id desc",undef,$name,$type,$cc->{souid}) if $type;
+	return db::selectrow_hashref("select p.id,p.type,p.record,o.v2 as owner from pki p join data d on d.v2=p.record::text and d.r like 'наименование%PKI' and d.v1=? join data o on o.r like '%PKI %' and o.v1=d.v2 order by case o.v2 when ? then 1 else 2 end,p.id desc",undef,$name,$cc->{souid});
 }
 
 sub store_pkey
