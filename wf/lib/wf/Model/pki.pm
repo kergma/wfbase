@@ -154,7 +154,7 @@ sub store_pkey
 	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=? where record=? and content=?",undef,$d->{type},$d->{record},$d->{content})>0
+	db::do("update pki set record=?,type=?,content=? where id=?",undef,$d->{record}, $d->{type},$d->{content},$d->{id})>0
 		or db::do("insert into pki (record,type,content) values (?,?,?)",undef,$d->{record},$d->{type},$d->{content});
 		
 	return $d;
@@ -177,7 +177,7 @@ sub store_cert
 	db::do("update data set v2=? where r =? and v1=?",undef,$d->{owner},$r,$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$d->{record},$r,$d->{owner});
 
-	db::do("update pki set type=?, key=?, request=?, signet=? where record=? and content=?",undef,$d->{type},$d->{pkey}->{id},$d->{req}->{id},$d->{signet}->{id},$d->{record},$d->{content})>0
+	db::do("update pki set record=?,type=?, content=?, key=?, request=?, signet=? where id=?",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id},$d->{req}->{id},$d->{signet}->{id},$d->{id})>0
 		or db::do("insert into pki (record,type,content,key,request,signet) values (?,?,?,?,?,?)",undef,$d->{record},$d->{type},$d->{content},$d->{pkey}->{id},$d->{req}->{id},$d->{signet}->{id});
 }
 
@@ -185,8 +185,7 @@ sub store_object
 {
 	my $self=shift;
 	my %h=@_>1?@_:(record=>shift);
-	my $d=ref 
-	$h{record}?$h{record}:\%h;
+	my $d=ref $h{record}?$h{record}:\%h;
 	
 	store_pkey($self,$d) if $d->{type} eq 'key';
 	store_cert($self,$d) if $d->{type} eq 'crt' or $d->{type} eq 'csr';
@@ -294,8 +293,9 @@ sub parse_cerdump
 	$dump=~/Issuer: (.*)$/m and $data->{issuer}=X500::DN->ParseRFC2253($1);
 	$data->{sh}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{subject}}} if $data->{subject};
 	$data->{ih}={map {$_->getAttributeTypes()=>$_->getAttributeValue($_->getAttributeTypes())} @{$data->{issuer}}} if $data->{issuer};
-	$dump=~/X509v3 Subject Alternative Name:( critical|)\s+(\S.*?)\n/ms and $data->{'ext-subjectaltname'}=$2;
 	$dump=~/X509v3 Basic Constraints:( critical|)\s+(\S.*?)\n/ms and $data->{'ext-basicconstraints'}=$2;
+	$dump=~/X509v3 Subject Alternative Name:\s+(\S.*?)\n/ms and $data->{'ext-subjectaltname'}=$1;
+	$dump=~/Authority Information Access:.*?CA Issuers - URI:(\S.*?)\n/ms and $data->{'ext-authorityinfoaccess'}="caIssuers;URI:$1";
 	return $data;
 }
 
