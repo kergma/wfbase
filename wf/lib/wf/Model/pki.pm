@@ -48,8 +48,8 @@ sub ACCEPT_CONTEXT
 sub gen_pkey
 {
 	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
-	my $a=ref $h{id}?$h{id}:\%h;
+	my %h=@_>1?@_:(record=>shift);
+	my $a=ref $h{record}?$h{record}:\%h;
 
 	my $pp="";
 	$pp="-pass pass:$a->{passphrase1} -des3" if $a->{passphrase1};
@@ -115,7 +115,7 @@ sub read_owner
        my $record=shift;
        my ($d,$t)=$cc->model->recdef($record);
        return {
-               id=>$t?$record:undef,
+               record=>$t?$record:undef,
                name=>$d,
                type=>$t,
                pkey=>read_object($self,db::selectval_scalar("select v1 from data where r like 'ключ PKI %' and v2=? order by id limit 1",undef,$record)),
@@ -142,8 +142,8 @@ sub search_object
 sub store_pkey
 {
 	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id}?$h{id}:\%h;
+	my %h=@_>1?@_:(record=>shift);
+	my $d=ref $h{record}?$h{record}:\%h;
 
 	db::do("update data set v1=? where r = 'наименование ключа PKI' and v2=?",undef,$d->{name},$d->{record})>0
 		or db::do("insert into data (v1,r,v2) values (?,'наименование ключа PKI',?)",undef,$d->{name},$d->{record});
@@ -163,8 +163,8 @@ sub store_pkey
 sub store_cert
 {
 	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
-	my $d=ref $h{id}?$h{id}:\%h;
+	my %h=@_>1?@_:(record=>shift);
+	my $d=ref $h{record}?$h{record}:\%h;
 
 	my $defr=$d->{type} eq 'csr'?'запроса сертификата PKI':'сертификата PKI';
 	db::do("update data set v1=? where r = 'наименование $defr' and v2=?",undef,$d->{name},$d->{record})>0
@@ -184,9 +184,9 @@ sub store_cert
 sub store_object
 {
 	my $self=shift;
-	my %h=@_>1?@_:(id=>shift);
+	my %h=@_>1?@_:(record=>shift);
 	my $d=ref 
-	$h{id}?$h{id}:\%h;
+	$h{record}?$h{record}:\%h;
 	
 	store_pkey($self,$d) if $d->{type} eq 'key';
 	store_cert($self,$d) if $d->{type} eq 'crt' or $d->{type} eq 'csr';
