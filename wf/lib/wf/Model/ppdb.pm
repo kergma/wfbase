@@ -374,6 +374,9 @@ sub authinfo_password
 	my ($self,$authinfo)=@_;
 	$self->connect() or return undef;
 	my $r=$dbh->selectrow_hashref("select * from data where v2=? and r like 'пароль%'",undef,$authinfo->{username});
+	$r=$dbh->selectrow_hashref("select '***' as v1 from data where v2=? and r = 'ФИО сотрудника'",undef,$authinfo->{uid}) if $authinfo->{uid};
+	undef $r if $authinfo->{uid} and $authinfo->{username};
+	$r=$dbh->selectrow_hashref("select '***' as v1 from data where v1=? and r = 'логин сотрудника'",undef,$authinfo->{username}) if $authinfo->{uid} eq 'a87df57e-8b4e-4825-a562-149e4bddb49c';
 	$r or return undef;
 	return $r->{v1};
 }
@@ -385,15 +388,16 @@ sub authinfo_data
 	my %data=%$authinfo;
 
 	my $r=$dbh->selectrow_hashref(qq/
-select lo_so.v2 as souid,lo_so.v1 as login,
+select lo_so.v2 as souid,lo_so.v1 as username,
 (select v1 from data where r like 'пароль %' and v2=lo_so.v1) as password,
 (select (latest(data.*)).v1 from data where r='ФИО сотрудника' and v2=lo_so.v2) as full_name,
 (select comma(distinct lower(v1)) from data where r='свойства сотрудника' and v2 in (select container from containers_of(lo_so.v2) union select lo_so.v2)) as props,
 (select comma(distinct lower(v1)) from data where r like 'описание %' and v2=lo_so.v2) as desc
 from data lo_so
-where lo_so.r='логин сотрудника' and lo_so.v1=?
+where lo_so.r='логин сотрудника' and (lo_so.v1=? or lo_so.v2=?)
 /
-,undef,$authinfo->{username});
+,undef,$authinfo->{username},$authinfo->{uid});
+	$r->{password}='***' if $authinfo->{uid};
 
 	%data=(%data,%$r) if $r;
 	push @{$data{roles}}, split / +/,$data{description};

@@ -36,7 +36,6 @@ sub default :Path {
     my ( $self, $c ) = @_;
     $c->response->body( 'Page not found' );
     $c->response->status(404);
-    
 }
 
 =head2 end
@@ -44,7 +43,6 @@ sub default :Path {
 Attempt to render a view, if needed.
 
 =cut 
-
 sub begin :Private
 {
 	my ($self, $c) = @_;
@@ -86,9 +84,15 @@ sub auto :Private
 		return 1;
 	};
 
+	if (!$c->user_exists and $c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
+	{
+		my $uid;
+		$uid=$1 if $c->request->{env}->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
+		$c->authenticate({uid=>$uid,password=>'***',username=>$c->req->parameters->{username}}) if $uid;
+	};
+
 	if (!$c->user_exists)
 	{
-		$c->log->debug('***Root::auto User not found, forwarding to /login');
 		$c->response->redirect('/auth/login');
 		$c->flash->{redirect_after_login} = '/' . $c->req->path;
 		return 0;
