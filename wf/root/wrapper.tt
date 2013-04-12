@@ -96,10 +96,15 @@
 				<li><a href="/edit/insert/log_old?who=[% c.user.username %]">Событие</a></li>
 			</ul>
 		</li>
-		[% IF c.check_any_user_role('запрашивающий') %]	
+		[% IF c.check_any_user_role('запрашивающий','оператор') %]	
 		<li><a href="#">Обработка</a>
 			<ul>
+			[% IF c.check_any_user_role('оператор') %]	
+				<li><a href="/ordproc/tp">Техпланы</a></li>
+			[%END%]
+			[% IF c.check_any_user_role('запрашивающий') %]	
 				<li><a href="/reqproc/list">Сведения ГКН</a></li>
+			[%END%]
 			</ul>
 		</li>
 		[% END %]

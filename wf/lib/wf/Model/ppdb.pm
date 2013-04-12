@@ -1279,4 +1279,73 @@ sub present
 	return $present->{uuid} if $format eq 'uuid';
 	return time2str($format,$present->{time});
 }
+
+sub orders_being_processed
+{
+
+	my $self=shift;
+	my $operator=shift;
+
+	my $r=[
+		@{db::selectall_arrayref(qq/
+select 'assigned' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
+(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
+from log l
+join packets p on p.id=l.refid
+join orders o on o.id=p.order_id
+join objects j on j.id=o.object_id
+where l.who=? and event='назначен' and refto='packets'
+and not exists (select 1 from log where refid=l.refid and id>l.id)
+order by p.id desc
+/, {Slice=>{}},$operator)},
+		@{db::selectall_arrayref(qq/
+select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
+(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
+from (
+select distinct o.*
+from log l
+join packets p on p.id=l.refid and l.refto='packets' and l.event='принят'
+left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
+where l.who=?
+and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
+order by o.id desc
+limit 8
+) o 
+join objects j on j.id=o.object_id
+/, {Slice=>{}},$operator)}
+	];
+	foreach my $o (@$r)
+	{
+		$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id",{Slice=>{}},$o->{order_id});
+		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach @{$o->{packets}};
+		$_->{status}=db::selectrow_hashref(qq/
+select event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, coalesce(d.v1,l.who::text) as fio
+from log l 
+left join data d on d.r='ФИО сотрудника' and v2=l.who::text
+where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
+/,undef,$_->{id}) foreach @{$o->{packets}};
+	};
+
+	return $r;
+
+}
+
+sub last_touched
+{
+	my $self=shift;
+	my $operator=shift;
+
+	my $r=db::selectrow_hashref(qq/
+select p.id as packet_id, o.id as order_id
+from log l
+left join packets p on p.id=l.refid and l.refto='packets'
+join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
+where l.who=?
+order by l.id desc limit 1
+/,undef,$operator);
+	return $r;
+
+}
 1;
