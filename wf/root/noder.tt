@@ -9,6 +9,8 @@
 [%ELSIF n.key=="filelist"%]
 	[%INCLUDE filelist.tt filelist=n.value footer=footer%]
 	[%n.stop=1%]
+[%ELSIF h.deferral%]
+        [%INCLUDE deferral.tt UNLESS footer%]
 [%ELSIF h.query%]
 	[%INCLUDE retrieval.tt h=h UNLESS footer%]
 	[%INCLUDE rowser.tt h=h UNLESS footer%]

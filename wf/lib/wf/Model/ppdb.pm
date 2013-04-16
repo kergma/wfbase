@@ -1090,6 +1090,89 @@ sub cancel_query
 
 }
 
+sub defer
+{
+	my $self=shift;
+	my $proc=shift;
+	my $params=shift;
+
+	my @values=@_;
+
+	my $cache=$cc->cache;
+
+	my $md5=Digest::MD5->new;
+	$md5->add($proc);
+	$md5->add($_,$params->{$_}) foreach sort keys %$params;
+	$md5->add($_) foreach @values;
+	my $rkey=$md5->hexdigest();
+
+	my $running=$cache->get("rkey-$rkey");
+	if (defined $running)
+	{
+		return {deferral=>$running->{deferral}};
+	};
+
+	my $deferral=Digest::MD5::md5_hex(rand());
+	my $start=time;
+
+	$SIG{CHLD} = 'IGNORE';
+	my $child=fork();
+
+	unless (defined $child)
+	{
+		return {error=>'cannot fork'};
+	};
+	$running={rkey=>$rkey,deferral=>$deferral,pid=>$child||$$,start=>$start};
+	if ($child)
+	{
+		$cache->set("rkey-$rkey",$running,0);
+		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params},0);
+		while ((time-$start)<($params->{defer_threshold}||5) and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
+		return {deferral=>$deferral};
+	};
+	
+	$cache->set("rkey-$rkey",$running,0);
+
+	my @r=&$proc(@values);
+	my $result=shift @r if scalar(@r)==1;
+	$result=\@r unless defined $result;
+
+	$result={'ARRAY'=>$result} if ref $result eq 'ARRAY';
+	$result={'SCALAR'=>$result} unless ref $result;
+	$result->{rkey}=$rkey;
+	
+	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params)};
+	$cache->remove("rkey-$rkey");
+	if (scalar(@{$result->{rows}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("defr-$deferral",$result))
+	{
+		$cc->cache("big")->set("rows-$deferral",$result->{rows});
+		delete $result->{rows};
+		$cache->set("defr-$deferral",$result);
+	};
+
+	exit 0; # PSGI
+
+}
+
+
+sub deferred
+{
+	my ($self,$deferral,$onlyheader)=@_;
+	my $cache=$cc->cache;
+	($deferral,$onlyheader)=(defer(@_)->{deferral},undef) if ref $deferral eq 'CODE';
+	my $result=$cache->get("defr-$deferral");
+	return {error=>'Неправильный или устаревший отложенный идентификатор',deferral=>$deferral} unless $result;
+	$result->{running}=$cache->get("rkey-$result->{rkey}");
+	$result->{running}->{duration}=time-$result->{running}->{start} if defined $result->{running};
+	$cache->set("defr-$deferral",$result,defined $result->{running}?0:undef);
+	unless ($result->{rows} or $onlyheader)
+	{
+		$result->{rows}=$cc->cache("big")->get("rows-$deferral");
+		$cc->cache("big")->set("rows-$deferral",$result->{rows});
+	};
+	return $result;
+}
+
 sub log_packet
 {
 	my $self=shift;
@@ -1286,7 +1369,7 @@ sub orders_being_processed
 	my $self=shift;
 	my $operator=shift;
 
-	my $r=[
+	my $a=[
 		@{db::selectall_arrayref(qq/
 select 'assigned' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
 (select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
@@ -1316,7 +1399,7 @@ limit 8
 join objects j on j.id=o.object_id
 /, {Slice=>{}},$operator)}
 	];
-	foreach my $o (@$r)
+	foreach my $o (@$a)
 	{
 		$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id",{Slice=>{}},$o->{order_id});
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach @{$o->{packets}};
@@ -1328,24 +1411,20 @@ where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 /,undef,$_->{id}) foreach @{$o->{packets}};
 	};
 
-	return $r;
-
-}
-
-sub last_touched
-{
-	my $self=shift;
-	my $operator=shift;
-
-	my $r=db::selectrow_hashref(qq/
+	my $r={
+		ARRAY=>$a,
+		last_touched=>db::selectrow_hashref(qq/
 select p.id as packet_id, o.id as order_id
 from log l
 left join packets p on p.id=l.refid and l.refto='packets'
 join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 order by l.id desc limit 1
-/,undef,$operator);
+/,undef,$operator)
+	};
+
 	return $r;
 
 }
+
 1;

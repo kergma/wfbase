@@ -1,0 +1,11 @@
+[%# vim: set filetype=tt2: -%]
+[% IF h.running %]
+<p>Результат ожидается [% h.running.duration %]с</p>
+[%stash.reload=3000%]
+[%ELSIF h.error%]
+<div>Ошибка: [%h.error%]</div>
+[%ELSE%]
+<div>
+получено [% h.completedf %] ([% h.duration %] с)[%IF h.refresh%] <a href="/[%h.refresh%]">обновить</a>[%END%]
+</div>
+[%END%]
