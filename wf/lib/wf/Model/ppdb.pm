@@ -1401,7 +1401,7 @@ join objects j on j.id=o.object_id
 	];
 	foreach my $o (@$a)
 	{
-		$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id",{Slice=>{}},$o->{order_id});
+		$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id desc",{Slice=>{}},$o->{order_id});
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach @{$o->{packets}};
 		$_->{status}=db::selectrow_hashref(qq/
 select event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, coalesce(d.v1,l.who::text) as fio
