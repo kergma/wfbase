@@ -6,6 +6,6 @@
 <div>Ошибка: [%h.error%]</div>
 [%ELSE%]
 <div>
-получено [% h.completedf %] ([% h.duration %] с)[%IF h.refresh%] <a href="/[%h.refresh%]">обновить</a>[%END%]
+получено [% h.completedf %] ([% h.duration %] с)[%IF h.action%] <a href="/[%h.action%]">обновить</a>[%END%]
 </div>
 [%END%]

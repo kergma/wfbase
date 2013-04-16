@@ -1143,10 +1143,10 @@ sub defer
 	
 	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params)};
 	$cache->remove("rkey-$rkey");
-	if (scalar(@{$result->{rows}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("defr-$deferral",$result))
+	if (scalar(@{$result->{ARRAY}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("defr-$deferral",$result))
 	{
-		$cc->cache("big")->set("rows-$deferral",$result->{rows});
-		delete $result->{rows};
+		$cc->cache("big")->set("array-$deferral",$result->{ARRAY});
+		delete $result->{ARRAY};
 		$cache->set("defr-$deferral",$result);
 	};
 
@@ -1165,10 +1165,11 @@ sub deferred
 	$result->{running}=$cache->get("rkey-$result->{rkey}");
 	$result->{running}->{duration}=time-$result->{running}->{start} if defined $result->{running};
 	$cache->set("defr-$deferral",$result,defined $result->{running}?0:undef);
-	unless ($result->{rows} or $onlyheader)
+	unless ($result->{ARRAY} or $onlyheader)
 	{
-		$result->{rows}=$cc->cache("big")->get("rows-$deferral");
-		$cc->cache("big")->set("rows-$deferral",$result->{rows});
+		$result->{ARRAY}=$cc->cache("big")->get("array-$deferral");
+		$cc->cache("big")->set("array-$deferral",$result->{ARRAY});
+		$result->{big}=1;
 	};
 	return $result;
 }
