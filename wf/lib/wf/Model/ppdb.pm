@@ -1370,8 +1370,9 @@ sub orders_being_processed
 	my $self=shift;
 	my $operator=shift;
 
-	my $a=[
-		@{db::selectall_arrayref(qq/
+	
+	my @a;
+	my $r=db::selectall_arrayref(qq/
 select 'assigned' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
 (select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
@@ -1382,8 +1383,11 @@ join objects j on j.id=o.object_id
 where l.who=? and event='назначен' and refto='packets'
 and not exists (select 1 from log where refid=l.refid and id>l.id)
 order by p.id desc
-/, {Slice=>{}},$operator)},
-		@{db::selectall_arrayref(qq/
+/, {Slice=>{}},$operator);
+	return {error=>$DBI::errstr} unless $r;
+	push @a, @$r;
+	
+	$r=db::selectall_arrayref(qq/
 select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
 (select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
@@ -1398,22 +1402,31 @@ order by o.id desc
 limit 8
 ) o 
 join objects j on j.id=o.object_id
-/, {Slice=>{}},$operator)}
-	];
-	foreach my $o (@$a)
+/, {Slice=>{}},$operator);
+	return {error=>$DBI::errstr} unless $r;
+	push @a, @$r;
+
+	foreach my $o (@a)
 	{
 		$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id desc",{Slice=>{}},$o->{order_id});
+		return {error=>$DBI::errstr} unless $o->{packets};
+
+
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach @{$o->{packets}};
-		$_->{status}=db::selectrow_hashref(qq/
+		foreach (@{$o->{packets}})
+		{
+			$_->{status}=db::selectrow_hashref(qq/
 select event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, coalesce(d.v1,l.who::text) as fio
 from log l 
 left join data d on d.r='ФИО сотрудника' and v2=l.who::text
 where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
-/,undef,$_->{id}) foreach @{$o->{packets}};
+/,undef,$_->{id});
+			return {error=>$DBI::errstr} unless defined $_->{status};
+		};
 	};
 
-	my $r={
-		ARRAY=>$a,
+	$r={
+		ARRAY=>\@a,
 		last_touched=>db::selectrow_hashref(qq/
 select p.id as packet_id, o.id as order_id
 from log l
