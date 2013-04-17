@@ -988,6 +988,7 @@ sub query
 	my $query=shift;
 	my $params=shift;
 	$params={} unless defined $params;
+	$params->{need_db}=0;
 	my @values=@_;
 
 	my $cache=$cc->cache;
@@ -1073,13 +1074,18 @@ sub defer
 		return {error=>'cannot fork'};
 	};
 	$running={rkey=>$rkey,deferral=>$deferral,pid=>$child||$$,start=>$start};
-	$running->{pg_pid}=$params->{pg_pid} if $params->{pg_pid};
 	if ($child)
 	{
 		$cache->set("rkey-$rkey",$running,0);
 		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
 		while ((time-$start)<($params->{defer_threshold}||5) and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {deferral=>$deferral};
+	};
+	if ($params->{need_db}//1)
+	{
+		db::disconnect();
+		db::connect();
+		$running->{pg_pid}=db::pg_pid;
 	};
 	
 	$cache->set("rkey-$rkey",$running,0);
