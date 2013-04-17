@@ -1,11 +1,17 @@
 [%# vim: set filetype=tt2: -%]
 [% IF h.running %]
 <p>Результат ожидается [% h.running.duration %]с</p>
+[%IF h.running.pg_pid%]
+<form action="/query/cancel?deferral=[%h.deferral%]" method="post">
+<p>Нажмите <input type="submit" value="Прервать"/> чтобы прекратить выполнение</p>
+</form> 
+[%END%]
 [%stash.reload=3000%]
 [%ELSIF h.error%]
 <div>Ошибка: [%h.error%]</div>
 [%ELSE%]
 <div>
-получено [% h.completedf %] ([% h.duration %] с)[%IF h.action%] <a href="/[%h.action%]">обновить</a>[%END%]
+[%IF h.rows%]Число строк [% h.rows.size %], [%END%]
+получено [% h.completedf %] ([% h.duration %] с)[%IF h.action%] <a href="/[%h.action%]">обновить</a>[%END%][% IF h.permalink %], <a href="[% h.permalink %]">постоянная ссылка</a>[% END %][%IF h.rows%], <a href="/get/query?deferral=[% h.deferral %]&amp;as=csv1251">csv1251</a> <a href="/get/query?deferral=[% h.deferral %]&amp">...</a>[%END%]
 </div>
 [%END%]

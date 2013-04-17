@@ -34,7 +34,7 @@ our $VERSION = "2.$rev";
 use Cwd 'abs_path';
 use lib abs_path($0)=~'/dev/'?"/home/worker/dev/lib":"/home/worker/lib";
 use FindBin;
-use lib "$FindBin::Bin/../../lib";
+use lib "$FindBin::Bin/../lib";
 # Configure the application. 
 #
 # Note that settings in wf.conf (or other external

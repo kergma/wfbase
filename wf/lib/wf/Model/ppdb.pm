@@ -705,7 +705,7 @@ sub read_table
 	$sth->finish;
 
 	$result{duration}=time-$start;
-	$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',time);
+	$result{completedf}=time2str('%Y-%m-%d %H:%M:%S',time);
 
 	return \%result;
 }
@@ -981,110 +981,60 @@ order by r.id desc
 	$data{completed}{rows}=[] unless defined $data{completed}{rows};
 	return \%data;
 }
+
 sub query
 {
 	my $self=shift;
 	my $query=shift;
 	my $params=shift;
+	$params={} unless defined $params;
 	my @values=@_;
 
 	my $cache=$cc->cache;
 
-	my $md5=Digest::MD5->new;
-	$md5->add($cc->user->{souid});
-	$md5->add($query);
-	$md5->add($_) foreach @values;
-	my $qkey=$md5->hexdigest();
-	my $querying=$cache->get("qkey-$qkey");
-	if (defined $querying)
-	{
-		return {retrieval=>$querying->{retrieval}};
-	};
+	return defer($self,sub {
+		my $running=pop;
+		my $sdbh=$self->sconnect() or return undef;
+		$running->{pg_pid}=$sdbh->{pg_pid};
+		$cache->set("rkey-$running->{rkey}",$running,0);
+		my $d=$cache->get("defr-$running->{deferral}");
+		$d->{query}=$query;
+		$cache->set("defr-$running->{deferral}",$d,0);
 
-	my $retrieval=Digest::MD5::md5_hex(rand());
-	my $start=time;
-
-	$SIG{CHLD} = 'IGNORE';
-	my $child=fork();
-
-	unless (defined $child)
-	{
-		return {error=>'cannot fork'};
-	};
-	$querying={qkey=>$qkey,retrieval=>$retrieval,pid=>$child||$$,start=>$start};
-	if ($child)
-	{
-		$cache->set("qkey-$qkey",$querying,0);
-		$cache->set("retr-$retrieval",{qkey=>$qkey,retrieval=>$retrieval,query=>$query,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
-		while ((time-$start)<5 and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
-		return {retrieval=>$retrieval};
-	};
-	
-	my $sdbh=$self->sconnect() or return undef;
-	$querying->{pg_pid}=$sdbh->{pg_pid};
-	$cache->set("qkey-$qkey",$querying,0);
-
-	my $result={qkey=>$qkey};
-	my $sth;
-	eval {$sth=$sdbh->prepare($query);};
-	if ($sth and $sth->execute(@values))
-	{
-		my @rows;
-		while (my $r=$sth->fetchrow_hashref)
+		my $result={};
+		my $sth;
+		eval {$sth=$sdbh->prepare($query);};
+		if ($sth and $sth->execute(@_))
 		{
-			push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
-		}; 
+			my @rows;
+			while (my $r=$sth->fetchrow_hashref)
+			{
+				push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+			}; 
 
-		$result={qkey=>$qkey,rows=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})]};
-	};
-	$result={%$result,(query=>$query,values=>[@values],duration=>time-$start,retrieved=>time,retrievedf=>time2str('%Y-%m-%d %H:%M:%S',time),retrieval=>$retrieval,error=>$@?$@:$sdbh->errstr,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
-	$cache->remove("qkey-$qkey");
-	if (scalar(@{$result->{rows}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("retr-$retrieval",$result))
-	{
-		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
-		delete $result->{rows};
-		$cache->set("retr-$retrieval",$result);
-	};
-	$sdbh->disconnect();
-
-	exit 0; # PSGI
-	#CORE::exit(0); # Apache mod_perl
-	#return {retrieval=>$retrieval}; # fast_cgi
-
-}
-
-sub result
-{
-	my ($self,$retrieval,$onlyheader)=@_;
-	my $cache=$cc->cache;
-	my $result=$cache->get("retr-$retrieval");
-	return {error=>'Неправильный или устаревший идентификатор извлечения'} unless $result;
-	$result->{querying}=$cache->get("qkey-$result->{qkey}");
-	$result->{querying}->{duration}=time-$result->{querying}->{start} if defined $result->{querying};
-	$cache->set("retr-$retrieval",$result,defined $result->{querying}?0:undef);
-	unless ($result->{rows} or $onlyheader)
-	{
-		$result->{rows}=$cc->cache("big")->get("rows-$retrieval");
-		$cc->cache("big")->set("rows-$retrieval",$result->{rows});
-	};
-	return $result;
+			$result={ARRAY=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})],error=>$@?$@:$sdbh->errstr};
+		};
+		$result={%$result,(query=>$query,error=>$@?$@:$sdbh->errstr)};
+		return $result;
+	},$params,@values);
 }
 
 sub cancel_query
 {
 	my ($self,$r)=@_;
-	$r=result($self,$r) if ref \$r eq 'SCALAR';
-	return unless $r->{querying};
+	$r=deferred($self,$r) if ref \$r eq 'SCALAR';
+	return unless $r->{running};
 
 	my $sdbh=$self->sconnect() or return undef;
-	my $re=$sdbh->selectrow_hashref("select cancel_query(?)",undef,$r->{querying}->{pg_pid});
+	my $re=$sdbh->selectrow_hashref("select cancel_query(?)",undef,$r->{running}->{pg_pid});
+	$re=db::selectrow_hashref("select cancel_query(?)",undef,$r->{running}->{pg_pid}) unless $re;
 	$sdbh->disconnect;
 	unless ($re)
 	{
-		kill 9, $r->{querying}->{pid};
+		kill 9, $r->{running}->{pid};
 		$r->{error}='Выполнение запроса прервано';
-		$cc->cache->remove("qkey-$r->{qkey}");
-		$cc->cache->set("retr-$r->{retrieval}",$r);
+		$cc->cache->remove("rkey-$r->{rkey}");
+		$cc->cache->set("defr-$r->{deferral}",$r);
 	};
 	return $re;
 
@@ -1123,17 +1073,18 @@ sub defer
 		return {error=>'cannot fork'};
 	};
 	$running={rkey=>$rkey,deferral=>$deferral,pid=>$child||$$,start=>$start};
+	$running->{pg_pid}=$params->{pg_pid} if $params->{pg_pid};
 	if ($child)
 	{
 		$cache->set("rkey-$rkey",$running,0);
-		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params},0);
+		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
 		while ((time-$start)<($params->{defer_threshold}||5) and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {deferral=>$deferral};
 	};
 	
 	$cache->set("rkey-$rkey",$running,0);
 
-	my @r=&$proc(@values);
+	my @r=&$proc(@values,$running);
 	my $result=shift @r if scalar(@r)==1;
 	$result=\@r unless defined $result;
 
@@ -1141,7 +1092,7 @@ sub defer
 	$result={'SCALAR'=>$result} unless ref $result;
 	$result->{rkey}=$rkey;
 	
-	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params)};
+	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
 	$cache->remove("rkey-$rkey");
 	if (scalar(@{$result->{ARRAY}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("defr-$deferral",$result))
 	{
@@ -1171,6 +1122,7 @@ sub deferred
 		$cc->cache("big")->set("array-$deferral",$result->{ARRAY});
 		$result->{big}=1;
 	};
+	$result->{rows}=$result->{ARRAY} if $result->{query};
 	return $result;
 }
 
@@ -1370,7 +1322,6 @@ sub orders_being_processed
 	my $self=shift;
 	my $operator=shift;
 
-	
 	my @a;
 	my $r=db::selectall_arrayref(qq/
 select 'assigned' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address,
