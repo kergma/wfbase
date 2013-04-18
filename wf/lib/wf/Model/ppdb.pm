@@ -1083,7 +1083,7 @@ sub defer
 	};
 	if ($params->{need_db}//1)
 	{
-		db::disconnect();
+		undef $db::dbh;
 		db::connect();
 		$running->{pg_pid}=db::pg_pid;
 	};
