@@ -1382,20 +1382,7 @@ where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 		};
 	};
 
-	$r={
-		ARRAY=>\@a,
-		last_touched=>db::selectrow_hashref(qq/
-select p.id as packet_id, o.id as order_id
-from log l
-left join packets p on p.id=l.refid and l.refto='packets'
-join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
-where l.who=?
-order by l.id desc limit 1
-/,undef,$operator)
-	};
-
-	return $r;
-
+	return { ARRAY=>\@a, };
 }
 
 1;
