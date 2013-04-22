@@ -1349,13 +1349,14 @@ select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as obj
 (select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
-select distinct o.*
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join packets p on p.id=l.refid and l.refto='packets' and l.event='принят'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
-order by o.id desc
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+order by event_id desc
 limit 8
 ) o 
 join objects j on j.id=o.object_id
