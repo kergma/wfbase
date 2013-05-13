@@ -204,6 +204,17 @@ sub get_sp_list
 	my ($self,$souid)=@_;
 	return options_list($self,{cache_key=>$souid},qq/select distinct item,sp_name from items where souid=? and sp_name is not null order by 2/,$souid);
 }
+sub get_direct_sp_list
+{
+	my ($self,$souid)=@_;
+	return options_list($self,{cache_key=>$souid},qq/
+select distinct name_sp.v2 as item, name_sp.v1 as name
+from data so_sp
+join data name_sp on name_sp.r='наименование структурного подразделения' and name_sp.v2=so_sp.v2
+where
+so_sp.v1=? and so_sp.r='принадлежит структурному подразделению'
+order by 2/,$souid);
+}
 sub get_outersp_list
 {
 	my ($self)=@_;
@@ -1118,10 +1129,18 @@ sub deferred
 	my $cache=$cc->cache;
 	($deferral,$onlyheader)=(defer(@_)->{deferral},undef) if ref $deferral eq 'CODE';
 	my $result=$cache->get("defr-$deferral");
+
 	return {error=>'Неправильный или устаревший отложенный идентификатор',deferral=>$deferral} unless $result;
 	$result->{running}=$cache->get("rkey-$result->{rkey}");
 	$result->{running}->{duration}=time-$result->{running}->{start} if defined $result->{running};
-	$cache->set("defr-$deferral",$result,defined $result->{running}?0:undef);
+	unless ($cache->set("defr-$deferral",$result,defined $result->{running}?0:undef))
+	{
+		$cc->cache("big")->set("array-$deferral",$result->{ARRAY});
+		my $a=$result->{ARRAY};
+		undef $result->{ARRAY};
+		$cache->set("defr-$deferral",$result);
+		$result->{ARRAY}=$a;
+	};
 	unless ($result->{ARRAY} or $onlyheader)
 	{
 		$result->{ARRAY}=$cc->cache("big")->get("array-$deferral");
@@ -1180,17 +1199,17 @@ sub identify_order
 	};
 	$a->{ordspec}=~/^(\d{4})(\d\d)(\d{6})0{6}$/ or $a->{error}='Некорректный номер заказа';
 	return $a if $a->{error};
-	my ($otd,$year,$ordno6)=($1,substr([localtime()]->[5]+1900,0,2).$2,$3);
+	my ($spcode,$year,$ordno6)=($1,substr([localtime()]->[5]+1900,0,2).$2,$3);
 
 	$a->{year}=$year;
-	$a->{otd}=db::selectrow_hashref("select v1 as code, v2 as spuid, (select shortest(v1) from data where r='наименование структурного подразделения' and v2=d.v2) as spname from data d where r='код структурного подразделения' and v1=?",undef,$otd);
+	$a->{spdata}=db::selectrow_hashref("select v1 as code, v2 as uid, (select shortest(v1) from data where r='наименование структурного подразделения' and v2=d.v2) as name from data d where r='код структурного подразделения' and v1=?",undef,$spcode);
 
 
 	$a->{order}=db::selectrow_hashref(qq/
 select * from orders o where substr(ordno,3,6)=? and sp=? and year=? and objno=?
 and (o.sp::text in (select item from items where souid=? and sp_name is not null)
 or o.id in (select refid from log where refto='orders' and (who::text in (select item from items where souid=? and sp_name is not null)) or who=?))
-/,undef,$ordno6,$a->{otd}->{spuid},$year,$a->{objno},$cc->user->{souid},$cc->user->{souid},$cc->user->{souid});
+/,undef,$ordno6,$a->{spdata}->{uid},$year,$a->{objno},$cc->user->{souid},$cc->user->{souid},$cc->user->{souid});
 
 	$a->{order_data}=undef;
 	$a->{order_data}=read_order_data($self,$a->{order}->{id}) if $a->{order};
@@ -1200,8 +1219,39 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 select 1 from items i1
 join items i2 on i2.container=i1.item
 where i1.souid=? and i2.container=?
-/,undef,$cc->user->{souid},$a->{otd}->{spuid}) unless $a->{permission};
-	$a->{error}="Доступ запрещен к отделению  с кодом $otd" and return $a unless $a->{permission};
+/,undef,$cc->user->{souid},$a->{spdata}->{uid}) unless $a->{permission};
+	$a->{error}="Доступ запрещен к отделению  с кодом $spcode" and return $a unless $a->{permission};
+	return $a;
+
+}
+
+sub create_order
+{
+	my $self=shift;
+	my %h=@_>1?@_:(id=>shift);
+	my $a=ref $h{id} eq 'HASH'?$h{id}:\%h;
+	$a->{order_id}=packetproc::newid();
+	$a->{object}=db::selectrow_hashref("select * from objects where id=?",undef,$a->{object_id});
+	unless ($a->{object})
+	{
+		$a->{object}={id=>packetproc::newid(),address=>$a->{address},source=>'wf'};
+		my $rv=db::do("insert into objects (id, address, source) values (?,?,?)",undef,$a->{object}->{id},$a->{object}->{address},$a->{object}->{source});
+		unless ($rv)
+		{
+			$a->{error}=db::errstr;
+			return $a;
+		};
+	};
+	if ($a->{ordspec} and $a->{ordspec}!~/^\d{4}(\d{2})(\d{6})000000$/)
+	{
+		$a->{error}='некорректная спецификация заказа 1с-регистратор';
+		return $a;
+	};
+	$a->{year}=$1&&($1+2000);
+	$a->{ordno}=$2&&"00$2";
+	undef $a->{objno} unless $a->{objno};
+	my $rv=db::do("insert into orders (id,sp,year,ordno,objno,object_id) values (?,?,?,?,?,?)",undef,$a->{order_id},$a->{sp},$a->{year},$a->{ordno},$a->{objno},$a->{object}->{id});
+	$a->{error}=db::errstr unless $rv;
 	return $a;
 
 }
@@ -1384,6 +1434,113 @@ where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 	};
 
 	return { ARRAY=>\@a, };
+}
+
+sub orders_being_conducted
+{
+
+	my $self=shift;
+	my $operator=shift;
+	my $filter=shift;
+
+
+	my $inner=qq\
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from log l
+join packets p on p.id=l.refid and l.refto='packets'
+left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
+where l.who=?
+and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+\;
+
+	$inner=qq\
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from orders o
+join log l on l.refto='orders' and l.refid=o.id
+where o.sp=?
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where id=max(l.id))<>'закрыт'
+\ if $filter ne $operator;
+
+	$inner=qq\
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from orders o
+join log l on l.refto='orders' and l.refid=o.id
+--where o.sp in (select distinct item::uuid from items where souid=? and sp_name is not null)
+where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where id=max(l.id))<>'закрыт'
+\ unless $filter;
+
+	my @a;
+	my $r;
+	$r=db::selectall_arrayref(qq/
+select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
+(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
+from (
+$inner
+order by event_id desc
+limit 8
+) o 
+join objects j on j.id=o.object_id
+/, {Slice=>{}},$filter||$operator);
+	return {error=>$DBI::errstr} unless $r;
+	push @a, @$r;
+
+	foreach my $o (@a)
+	{
+		my $r=order_data($self,$o);
+		return $r if $r->{error};
+		my $p=$o->{packets}[0];
+		$o->{group}='к принятию' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
+		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
+		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and $p->{status}->{note} =~ /на подпись/;
+		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+
+		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
+	};
+	my %group_ordering=('замечания'=>1,'к принятию'=>2,'техплан'=>3,''=>4,'к закрытию'=>5);
+	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
+
+	return { ARRAY=>\@a, };
+}
+
+sub order_data
+{
+	my ($self,$o)=@_;
+	$o->{packets}=db::selectall_arrayref("select * from packets p where order_id=? order by p.id desc",{Slice=>{}},$o->{order_id});
+	return {error=>$DBI::errstr} unless $o->{packets};
+
+	foreach (@{$o->{packets}})
+	{
+		$_->{status}=db::selectrow_hashref(qq/
+select event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
+from log l 
+left join data d on d.r='ФИО сотрудника' and v2=l.who::text
+where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
+/,undef,$_->{id});
+		return {error=>$DBI::errstr} unless defined $_->{status};
+	};
+	return $o;
+}
+
+
+sub read_packet_info
+{
+	my ($self,$packet_id)=@_;
+	return db::selectrow_hashref("select id as packet_id,* from packets where id=?",undef,$packet_id);
+}
+sub read_order_info
+{
+	my ($self,$order_id)=@_;
+	return db::selectrow_hashref(qq/select o.id as order_id,*,
+(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode,
+(select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status
+from orders o join objects j on j.id=o.object_id where o.id=?/,undef,$order_id);
 }
 
 1;

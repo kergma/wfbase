@@ -72,6 +72,7 @@
 			<ul>
 				<li><a href="/upload/packet">Пакет</a></li>
 				<li><a href="/reqproc/create">Запрос сведений</a></li>
+				<li><a href="/ordproc/create">Заказ</a></li>
 			</ul>
 		</li>
 		[% END %]
@@ -96,9 +97,12 @@
 				<li><a href="/edit/insert/log_old?who=[% c.user.username %]">Событие</a></li>
 			</ul>
 		</li>
-		[% IF c.check_any_user_role('запрашивающий','оператор') %]	
+		[% IF c.check_any_user_role('запрашивающий','оператор','пользователь') %]	
 		<li><a href="#">Обработка</a>
 			<ul>
+			[% IF c.check_any_user_role('пользователь') %]	
+				<li><a href="/ordproc/conduct">Заказы</a></li>
+			[%END%]
 			[% IF c.check_any_user_role('оператор') %]	
 				<li><a href="/ordproc/tp">Техпланы</a></li>
 			[%END%]
