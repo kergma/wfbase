@@ -1385,6 +1385,7 @@ from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
+and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
 and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 \;
@@ -1398,7 +1399,6 @@ select o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp
 from (
 $inner
 order by event_id desc
-limit 8
 ) o 
 join objects j on j.id=o.object_id
 /, {Slice=>{}},$filter||$operator);
@@ -1411,10 +1411,12 @@ join objects j on j.id=o.object_id
 		return $r if $r->{error};
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
+		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
-	my %group_ordering=('замечания'=>1,'к принятию'=>2,'техплан'=>3,''=>4,'к закрытию'=>5);
+	my %group_ordering=('замечания'=>1,'к принятию'=>2,''=>3,'техплан'=>4,'к закрытию'=>5);
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
 
 	return { ARRAY=>\@a, };
@@ -1451,7 +1453,6 @@ having (select event from log where id=max(l.id))<>'закрыт'
 select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
---where o.sp in (select distinct item::uuid from items where souid=? and sp_name is not null)
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 having (select event from log where id=max(l.id))<>'закрыт'
@@ -1466,7 +1467,6 @@ select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as obj
 from (
 $inner
 order by event_id desc
---limit 8
 ) o 
 join objects j on j.id=o.object_id
 /, {Slice=>{}},$filter||$operator);

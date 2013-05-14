@@ -11,7 +11,7 @@
 <div>Ошибка: [%h.error%]</div>
 [%ELSE%]
 <div>
-[%IF h.rows%]Число строк [% h.rows.size %], [%END%]
+[%IF h.ARRAY%][% h.ARRAY.size %] строк [%END%]
 получено [% h.completedf %] ([% h.duration %] с)[%IF h.action%] <a href="/[%h.action%]">обновить</a>[%END%][% IF h.permalink %], <a href="[% h.permalink %]">постоянная ссылка</a>[% END %][%IF h.rows%], <a href="/get/query?deferral=[% h.deferral %]&amp;as=csv1251">csv1251</a> <a href="/get/query?deferral=[% h.deferral %]&amp">...</a>[%END%]
 </div>
 [%END%]
