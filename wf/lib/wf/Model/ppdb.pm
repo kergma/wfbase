@@ -1466,7 +1466,7 @@ select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as obj
 from (
 $inner
 order by event_id desc
-limit 8
+--limit 8
 ) o 
 join objects j on j.id=o.object_id
 /, {Slice=>{}},$filter||$operator);
