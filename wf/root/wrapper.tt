@@ -15,10 +15,8 @@
 -->
 
 <script type="text/javascript" src="/static/js/jquery-1.8.1.min.js"></script>
-<script type="text/javascript" src="/scripts/informer.js"></script>
 
 <link rel="stylesheet" href="/css/common.css" />
-<link rel="stylesheet" href="/css/informer.css" />
 
 <!--[if IE]>
 
@@ -46,20 +44,9 @@
 </div>
 [%END%]
 
-<div id="informer">
-	<ul id="informer-messages">
-		<div id="informer-close"><img src="/static/images/x.png"></div>
-	</ul>
-</div>
-
-<script type="text/javascript">
-
-	window.onload = function () {
-		var inf = new informer.Informer('informer');
-	}
-
-</script>
-
+[%IF news%]
+[%INCLUDE notifier.tt%]
+[%END%]
 
 <div><!-- main-menu -->
 	<div id="auth">

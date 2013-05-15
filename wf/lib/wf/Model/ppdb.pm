@@ -1527,4 +1527,61 @@ sub read_order_info
 from orders o join objects j on j.id=o.object_id where o.id=?/,undef,$order_id);
 }
 
+sub last_notified
+{
+	my ($self,$souid)=@_;
+	return db::selectval_scalar("select v1 from data where r='последнее оповещение сотрудника' and v2=?",undef,$souid);
+}
+
+sub set_notified
+{
+	my ($self,$souid,$notification)=@_;
+	$notification->{date}=str2time($notification->{date}) if ref $notification eq 'HASH' and $notification->{date}!~/^\d+$/;
+	$notification="$notification->{date} $notification->{md5}" if ref $notification eq 'HASH';
+	return {error=>'Ошибка в данных'} unless $notification=~/^\d+\s+[a-f0-9\-]+$/;
+
+	return {success=>1} if db::do("update data set v1=? where r='последнее оповещение сотрудника' and v2=?",undef,$notification,$souid)>0;
+	return {success=>1} if db::do("insert into data (v1,r,v2) values (?,'последнее оповещение сотрудника',?)",undef,$notification,$souid)>0;
+	return {error=>db::errstr};
+
+}
+
+sub read_news
+{
+	use LWP::Simple;
+	my ($self,$user)=@_;
+
+	my $news_href = "http://trac.sfo.rosinv.ru/wiki/Новости";
+	my $notified=last_notified($self,$user);
+	my $notified_md5;
+	($notified,$notified_md5)=($1,$2) if $notified=~/^(\d+) (.*)$/;
+
+	my $newsdata = $cc->cache->get("newsdata-".$user);
+	unless ($newsdata)
+	{
+		my $content = encode("utf8",get("http://trac/wiki/Новости"));
+		#my $content = get($news_href); #"http://trac/wiki/Новости");
+	 	return unless defined $content;
+
+		# Вырезаем всё кроме новостей
+		$content =~ s'^.*<div id="wikipage">''s;
+		$content =~ s'</div>.*$''s;
+
+		# Перебираем новости и формируем список
+		while ($content =~ s|<h3.*?id="(.+?)">(.+?)</h3>.*?<p>(.+?)</p>||s)
+		{
+			my $d={text => $3, status => 'info', date => $2, timestamp=>str2time($2),href => "$news_href#$1"};
+			last if $notified>$d->{timestamp};
+			s/\s+$// and s/^\s+// foreach values %$d;
+			$d->{md5}=Digest::MD5::md5_hex($d->{text});
+			last if $d->{md5} eq $notified_md5;
+			unshift @$newsdata, $d;
+		};
+
+		$cc->cache->set("newsdata-".$user,$newsdata);
+	};
+	return $newsdata;
+}
+
+
 1;

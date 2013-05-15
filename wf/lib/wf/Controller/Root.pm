@@ -79,6 +79,8 @@ sub auto :Private
 	srand();
 	$c->stash->{version}=$wf::VERSION;
 	$c->stash->{present}=$c->model->present();
+	my $newsdata=$c->model->read_news($c->user->{souid}) if $c->user_exists and $c->controller != $c->controller('api');
+	$c->stash->{news}={display=>{order=>[]},data=>$newsdata} if $newsdata;
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;
