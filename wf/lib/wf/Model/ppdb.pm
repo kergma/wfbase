@@ -1480,7 +1480,7 @@ join objects j on j.id=o.object_id
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
-		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and $p->{status}->{note} =~ /на подпись/;
+		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
 		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
 
