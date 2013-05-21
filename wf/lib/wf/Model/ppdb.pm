@@ -1583,5 +1583,15 @@ sub read_news
 	return $newsdata;
 }
 
+sub log_activity
+{
+	my ($self,$user)=@_;
+	my $active=$cc->cache->get("last-active-$user");
+	return if $active;
+	$cc->cache->set("last-active-$user",time());
+	return if db::do("update data set v1=current_timestamp where r='последняя активность сотрудника' and v2=?",undef,$user)>0;
+	db::do("insert into data (v1,r,v2) values (current_timestamp,'последняя активность сотрудника',?)",undef,$user)>0;
+}
+
 
 1;

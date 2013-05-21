@@ -99,6 +99,7 @@ sub auto :Private
 		$c->flash->{redirect_after_login} = '/' . $c->req->path;
 		return 0;
 	};
+	$c->model->log_activity($c->user->{souid});
     
 	return 1;
 }
