@@ -1413,10 +1413,11 @@ join objects j on j.id=o.object_id
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
 		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
-	my %group_ordering=('замечания'=>1,'к принятию'=>2,''=>3,'техплан'=>4,'к закрытию'=>5);
+	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
 
 	return { ARRAY=>\@a, };
@@ -1593,5 +1594,82 @@ sub log_activity
 	db::do("insert into data (v1,r,v2) values (current_timestamp,'последняя активность сотрудника',?)",undef,$user)>0;
 }
 
+sub orders_being_dispatched
+{
+
+	my $self=shift;
+	my $operator=shift;
+	my $filter=shift;
+
+
+	my $inner=qq\
+select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where refid in (o.id,p.id)) as event_id
+from packets p
+left join orders o on o.id=p.order_id
+where
+p.type in( 'данные','техплан')
+and exists (select 1 from log l where refto='packets' and refid=p.id and event='загружен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
+and (
+o.sp::text in (select item from items where souid=? and sp_name is not null)
+or o.id in (select refid from log where refto='orders' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
+or p.id in (select refid from log where refto='packets' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
+)
+\;
+
+	my $coworkers=get_coworkers_list($self,$operator);
+
+	$inner=qq\
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from orders o
+join log l on l.refto='orders' and l.refid=o.id
+where o.sp=?
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where id=max(l.id))<>'закрыт'
+\ if $filter ne $operator;
+
+	$inner=qq\
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from log l
+join packets p on p.id=l.refid and l.refto='packets'
+left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
+where l.who=?
+and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
+and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+\ if $filter ne $operator and grep {(keys %$_)[0] eq $filter} @$coworkers;
+
+	my @a;
+	my $r;
+	$r=db::selectall_arrayref(qq/
+select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
+(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
+from (
+$inner
+order by event_id desc
+) o 
+join objects j on j.id=o.object_id
+/, {Slice=>{}},$filter||$operator);
+	return {error=>$DBI::errstr} unless $r;
+	push @a, @$r;
+
+	foreach my $o (@a)
+	{
+		my $r=order_data($self,$o);
+		return $r if $r->{error};
+		my $p=$o->{packets}[0];
+		$o->{group}='к принятию' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'загружен';
+		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
+		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
+		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+
+		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
+	};
+	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
+	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
+
+	return { ARRAY=>\@a, };
+}
 
 1;

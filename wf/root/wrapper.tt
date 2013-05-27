@@ -72,6 +72,9 @@
 			[% IF c.check_any_user_role('оператор') %]	
 				<li><a href="/ordproc/tp">Техпланы</a></li>
 			[%END%]
+			[% IF c.check_any_user_role('диспетчер') %]	
+				<li><a href="/ordproc/dispatch">Диспетчеризация</a></li>
+			[%END%]
 			[% IF c.check_any_user_role('запрашивающий') %]	
 				<li><a href="/reqproc/list">Сведения ГКН</a></li>
 			[%END%]
