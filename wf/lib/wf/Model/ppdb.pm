@@ -48,6 +48,11 @@ sub ACCEPT_CONTEXT
 
 sub connect
 {
+	if ($dbh and !$dbh->ping)
+	{
+		print "db connection lost ",$dbh->errstr,"\n";
+		undef $dbh;
+	};
 	$dbh and return $dbh;
 	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'mailproc', undef, {AutoCommit => 1,InactiveDestroy=>1});
 	$dbh->do("create function pg_temp.wfuser() returns uuid as \$\$select '${\($cc->user->{souid})}'::uuid\$\$ language sql") if $cc->user;
@@ -1027,6 +1032,8 @@ sub query
 			$result={ARRAY=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})],error=>$@?$@:$sdbh->errstr};
 		};
 		$result={%$result,(query=>$query,error=>$@?$@:$sdbh->errstr)};
+		$sth->finish();
+		$sdbh->disconnect();
 		return $result;
 	},$params,@values);
 }
@@ -1117,6 +1124,7 @@ sub defer
 		delete $result->{ARRAY};
 		$cache->set("defr-$deferral",$result);
 	};
+	db::disconnect if $params->{need_db}//1;
 
 	exit 0; # PSGI
 
