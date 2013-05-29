@@ -35,7 +35,6 @@ it under the same terms as Perl itself.
 
 =cut
 
-my $dbh;
 my $cc;
 
 sub ACCEPT_CONTEXT
@@ -44,19 +43,6 @@ sub ACCEPT_CONTEXT
 
 	$cc=$c;
 	return $self;
-}
-
-sub connect
-{
-	if ($dbh and !$dbh->ping)
-	{
-		print "db connection lost ",$dbh->errstr,"\n";
-		undef $dbh;
-	};
-	$dbh and return $dbh;
-	$dbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'mailproc', undef, {AutoCommit => 1,InactiveDestroy=>1});
-	$dbh->do("create function pg_temp.wfuser() returns uuid as \$\$select '${\($cc->user->{souid})}'::uuid\$\$ language sql") if $cc->user;
-	return $dbh;
 }
 
 sub sconnect
@@ -69,7 +55,6 @@ sub sconnect
 sub array_ref
 {
 	my ($self, $q, @values)=@_;
-	$self->connect() or return undef;
 
 	my $opts={row=>'auto'};
 	if (ref $q eq 'HASH')
@@ -78,7 +63,7 @@ sub array_ref
 		$q=shift @values;
 	};
 
-	my $sth=$dbh->prepare($q);
+	my $sth=db::prepare($q);
 	my $r=$sth->execute(@values);
 	return undef unless $r;
 	my $row=$opts->{row};
@@ -104,7 +89,6 @@ sub array_ref
 sub cached_array_ref
 {
 	my ($self, $q, @values)=@_;
-	$self->connect() or return undef;
 	my $opts={};
 	if (ref $q eq 'HASH')
 	{
@@ -131,12 +115,11 @@ sub cached_array_ref
 sub read_row
 {
 	my ($self, $table, $id)=@_;
-	$self->connect() or return undef;
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
-	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на чтение таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	return {error=>'Действие не разрешено'} unless db::selectrow_hashref("select * from data where v1=? and r='разрешение на чтение таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 	$id or undef $id;
-	my $sth=$dbh->prepare("select * from ".$dbh->quote_identifier($table)." where id=?");
+	my $sth=db::prepare("select * from ".db::quote_identifier($table)." where id=?");
 	$sth->execute($id);
 	my $r=$sth->fetchrow_hashref();
 	my %data=(header=>$sth->{NAME},data=>$r);
@@ -148,12 +131,11 @@ sub read_row
 sub update_row
 {
 	my ($self, $table, $id, $set)=@_;
-	$self->connect() or return undef;
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
-	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	return {error=>'Действие не разрешено'} unless db::selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
-	my $rv=$dbh->do("update ".$dbh->quote_identifier($table)." set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
+	my $rv=db::do("update ".db::quote_identifier($table)." set ".join(', ',map ("$_=?",keys %$set))." where id=?",undef,map($set->{$_},keys %$set),$id);
 	return {rv=>$rv, error=>"Ошибка при сохранении изменений: $DBI::errstr"} unless $rv==1;
 	return {rv=>$rv};
 
@@ -162,16 +144,15 @@ sub update_row
 sub insert_row
 {
 	my ($self, $table, $pairs)=@_;
-	$self->connect() or return undef;
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
-	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	return {error=>'Действие не разрешено'} unless db::selectrow_hashref("select * from data where v1=? and r='разрешение на ввод данных в таблицу для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 	
-	my $r=$dbh->selectrow_hashref("select nextval('$table"."_id_seq') as id");
-	$r=$dbh->selectrow_hashref("select uuid_generate_v1o() as id") unless $r;
+	my $r=db::selectrow_hashref("select nextval('$table"."_id_seq') as id");
+	$r=db::selectrow_hashref("select uuid_generate_v1o() as id") unless $r;
 	return {error=>'Ошибка при определении идентификатора новой записи'} unless $r;
 
-	my $rv=$dbh->do("insert into ".$dbh->quote_identifier($table)." (id, ".join(', ', keys %$pairs).") values (?, ".join(', ',map ("?",values %$pairs)).")",undef,$r->{id},values %$pairs);
+	my $rv=db::do("insert into ".db::quote_identifier($table)." (id, ".join(', ', keys %$pairs).") values (?, ".join(', ',map ("?",values %$pairs)).")",undef,$r->{id},values %$pairs);
 
 	return {error=>"Ошибка при добавлении записи: $DBI::errstr"} unless $rv==1;
 	
@@ -182,14 +163,13 @@ sub insert_row
 sub delete_row
 {
 	my ($self, $table, $id)=@_;
-	$self->connect() or return undef;
 	defined $cc or return undef;
 	$table =~ /^[[:alnum:]_]+$/ or return undef;
-	return {error=>'Действие не разрешено'} unless $dbh->selectrow_hashref("select * from data where v1=? and r='разрешение на удаление данных из таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
+	return {error=>'Действие не разрешено'} unless db::selectrow_hashref("select * from data where v1=? and r='разрешение на удаление данных из таблицы для роли' and v2 in (".join(', ',map ('?',@{$cc->user->{roles}})).")",undef,$table,@{$cc->user->{roles}});
 
 	return {error=>'Некорректный  идентификатор записи'} unless $id+0;
 
-	my $rv=$dbh->do("delete from ".$dbh->quote_identifier($table)." where id=?",undef,$id);
+	my $rv=db::do("delete from ".db::quote_identifier($table)." where id=?",undef,$id);
 
 	return {rv=>$rv,error=>"Ошибка при удалении записи: $DBI::errstr"} unless $rv==1;
 	
@@ -201,7 +181,6 @@ sub get_otd_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
 }
 sub get_sp_list
@@ -224,7 +203,6 @@ sub get_outersp_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	my $r=cached_array_ref($self,qq"
 select v2 as sp, shortest(v1) as spname, 1 as ord from data d where r='наименование структурного подразделения' and v2 in ('a9b7079b-26de-49e3-8d16-9e141d644faf','d86e0ad4-4824-430b-9790-5e78e3a87cae') group by v2
 union
@@ -257,35 +235,30 @@ sub options_list
 sub get_cd_list
 {
 	my ($self)=@_;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select cadastral_district from objects where cadastral_district is not null group by cadastral_district order by cadastral_district");
 }
 
 sub get_objsource_list
 {
 	my ($self)=@_;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select source from objects where source is not null group by source order by source");
 }
 
 sub get_rc_list
 {
 	my ($self)=@_;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select reg_code from packets where reg_code is not null group by reg_code order by reg_code");
 }
 sub get_pt_list
 {
 	my ($self)=@_;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select type from packets where type is not null group by type order by type");
 }
 
 sub get_field_list
 {
 	my ($self,$table)=@_;
-	$self->connect() or return undef;
-	my $sth=$dbh->prepare("select * from $table where false");
+	my $sth=db::prepare("select * from $table where false");
 	$sth->execute();
 	$sth->fetchrow_hashref();
 	$sth->finish;
@@ -295,7 +268,6 @@ sub get_field_list
 sub get_path_list
 {
 	my ($self)=@_;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select path from packets where path is not null group by path order by path");
 }
 
@@ -303,10 +275,9 @@ sub get_event_list
 {
 	my ($self,$refto)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my $reftow="";
-	$refto and $reftow="and refto=".$dbh->quote($refto);
+	$refto and $reftow="and refto=".db::quote($refto);
 	return cached_array_ref($self,"select event from log where event is not null $reftow and id>uuid_generate_v1o(now()-6*interval '1 month') group by event order by event");
 }
 
@@ -314,7 +285,6 @@ sub get_who_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select (select v1::uuid from sdata where r='ФИО сотрудника' and v2::uuid=l.who) as who from log l where who is not null group by who order by who");
 }
 
@@ -322,7 +292,6 @@ sub get_coworkers_list
 {
 	my ($self,$souid)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	my $r=cached_array_ref($self,qq/
 select comma(distinct fio_cw.v1) as fio, fio_cw.v2 as souid
 from data dc
@@ -340,7 +309,6 @@ sub get_dispatchee_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	my $r=cached_array_ref($self,qq/
 select v2 as uid, shortest(v1) as name from data where r in ('ФИО сотрудника', 'наименование структурного подразделения') group by v2,r order by r, name
 /);
@@ -353,7 +321,6 @@ sub get_oper_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	return cached_array_ref($self,qq/
 select d2.v1 as who
 from data d1
@@ -367,7 +334,6 @@ sub get_refto_list
 {
 	my ($self)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	return cached_array_ref($self,"select refto from log_old where refto is not null group by refto order by refto");
 }
 
@@ -388,11 +354,10 @@ order by 2
 sub authinfo_password
 {
 	my ($self,$authinfo)=@_;
-	$self->connect() or return undef;
-	my $r=$dbh->selectrow_hashref("select * from data where v2=? and r like 'пароль%'",undef,$authinfo->{username});
-	$r=$dbh->selectrow_hashref("select '***' as v1 from data where v2=? and r = 'ФИО сотрудника'",undef,$authinfo->{uid}) if $authinfo->{uid};
+	my $r=db::selectrow_hashref("select * from data where v2=? and r like 'пароль%'",undef,$authinfo->{username});
+	$r=db::selectrow_hashref("select '***' as v1 from data where v2=? and r = 'ФИО сотрудника'",undef,$authinfo->{uid}) if $authinfo->{uid};
 	undef $r if $authinfo->{uid} and $authinfo->{username};
-	$r=$dbh->selectrow_hashref("select '***' as v1 from data where v1=? and r = 'логин сотрудника'",undef,$authinfo->{username}) if $authinfo->{uid} eq 'a87df57e-8b4e-4825-a562-149e4bddb49c';
+	$r=db::selectrow_hashref("select '***' as v1 from data where v1=? and r = 'логин сотрудника'",undef,$authinfo->{username}) if $authinfo->{uid} eq 'a87df57e-8b4e-4825-a562-149e4bddb49c';
 	$r or return undef;
 	return $r->{v1};
 }
@@ -400,10 +365,9 @@ sub authinfo_password
 sub authinfo_data
 {
 	my ($self,$authinfo)=@_;
-	$self->connect() or return undef;
 	my %data=%$authinfo;
 
-	my $r=$dbh->selectrow_hashref(qq/
+	my $r=db::selectrow_hashref(qq/
 select lo_so.v2 as souid,lo_so.v1 as username,
 (select v1 from data where r like 'пароль %' and v2=lo_so.v1) as password,
 (select (latest(data.*)).v1 from data where r='ФИО сотрудника' and v2=lo_so.v2) as full_name,
@@ -428,7 +392,7 @@ where lo_so.r='логин сотрудника' and (lo_so.v1=? or lo_so.v2=?)
 
 	my $roles="'norole'";
 	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
-	my $otds=$dbh->selectcol_arrayref(qq/
+	my $otds=db::selectcol_arrayref(qq/
 select v1 from data where r='отделение сотрудника' and v2=?
 union
 select otd from orders group by otd having otd = ? 
@@ -437,7 +401,7 @@ select v1 from data where r='отделение сущности' and v2=?
 /,undef, $data{souid},$data{username},$data{full_name});
 	$otds and @$otds and $data{otd}=join("|",@$otds);
 
-	my $sp=$dbh->selectall_arrayref(qq/
+	my $sp=db::selectall_arrayref(qq/
 select so_sp.v2 as uid,comma(name_sp.v1) as name
 from data so_sp
 join data name_sp on name_sp.v2=so_sp.v2 and name_sp.r='наименование структурного подразделения'
@@ -447,7 +411,7 @@ group by so_sp.v2
 	$data{sp}=[map {$_->{uid}} @$sp];
 	$data{spname}=[map {$_->{name}} @$sp];
 
-	$dbh->do("create or replace function pg_temp.wfuser() returns uuid as \$\$select '$data{souid}'::uuid\$\$ language sql");
+	db::do("create or replace function pg_temp.wfuser() returns uuid as \$\$select '$data{souid}'::uuid\$\$ language sql");
 
 	return \%data;
 }
@@ -455,7 +419,6 @@ group by so_sp.v2
 sub souid
 {
 	my ($self, $who)=@_;
-	$self->connect() or return undef;
 	return $who if $who=~/^[a-f0-9\-]{36}$/;
 
 	my $whocache=$cc->cache->get("whosouidmap");
@@ -472,7 +435,6 @@ sub souid
 sub sodata
 {
 	my ($self, $souid)=@_;
-	$self->connect() or return undef;
 	my $sodata=$cc->cache->get("sodata-$souid");
 	unless ($sodata)
 	{
@@ -502,9 +464,8 @@ sub read_order_data
 {
 	my ($self,$id)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref(qq{
+	my $r=db::selectrow_hashref(qq{
 select o.*,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='orders' and refid=o.id order by id desc limit 1) as osdate,
@@ -517,10 +478,10 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	return undef unless $r;
 	my %data;
 	$data{order}=$r;
-	$r=$dbh->selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
+	$r=db::selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
 	$data{object}=$r;
 
-	my $sth=$dbh->prepare("select * from packets where order_id=? order by id desc");
+	my $sth=db::prepare("select * from packets where order_id=? order by id desc");
 	$sth->execute($id);
 	my %packets=(elements=>[]);
 	while (my $r=$sth->fetchrow_hashref())
@@ -530,7 +491,7 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	$sth->finish;
 	$data{packets}=\%packets;
 
-	$sth=$dbh->prepare(qq/
+	$sth=db::prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
 from log l
 where (refto='orders' and refid=?)
@@ -552,16 +513,15 @@ sub read_object_data
 {
 	my ($self,$id)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
-	my $r=$dbh->selectrow_hashref("select * from objects o where id=? and (exists (select 1 from orders where object_id=o.id and otd ~ ?) or not exists (select 1 from orders where object_id=o.id))",undef,$id,$cc->user->{otd});
+	my $r=db::selectrow_hashref("select * from objects o where id=? and (exists (select 1 from orders where object_id=o.id and otd ~ ?) or not exists (select 1 from orders where object_id=o.id))",undef,$id,$cc->user->{otd});
 	return undef unless $r;
 
 	my %data;
 	$data{object}=$r;
 
 	my %orders;
-	my $sth=$dbh->prepare(qq{
+	my $sth=db::prepare(qq{
 select o.*,
 (select to_char(date,'yyyy-mm-dd') from log_old where event='принят' and refto='orders' and refid=o.id order by id desc limit 1) as accepted,
 (select to_char(date,'yyyy-mm-dd') from log_old where event='оплачен' and refto='orders' and refid=o.id order by id desc limit 1) as paid
@@ -576,7 +536,7 @@ from orders o where object_id=? order by id desc
 	$data{orders}=\%orders;
 
 	my %packets=(elements=>[]);
-	$sth=$dbh->prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
+	$sth=db::prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
@@ -585,7 +545,7 @@ from orders o where object_id=? order by id desc
 	$sth->finish;
 	$data{packets}=\%packets;
 
-	$sth=$dbh->prepare(qq/
+	$sth=db::prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
 (select id from timeline t where t.basename=l.file order by id desc limit 1) as message
 from log_old l
@@ -608,10 +568,9 @@ sub read_packet_data
 {
 	my ($self,$id)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my %data;
-	my $packet=$dbh->selectrow_hashref(qq{
+	my $packet=db::selectrow_hashref(qq{
 select p.*,
 (select coalesce(d.v1,who::text) from log l left join data d on d.r='ФИО сотрудника' and v2::uuid=l.who where refto='packets' and refid=p.id order by l.id desc limit 1) as who,
 (select event || ' '|| to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='packets' and refid=p.id order by id limit 1) as accepted,
@@ -622,13 +581,13 @@ from packets p where id=?}
 	return undef unless $packet;
 	$data{packet}=$packet;
 
-	my $order=$dbh->selectrow_hashref("select * from orders where id=?",undef,$packet->{order_id});
+	my $order=db::selectrow_hashref("select * from orders where id=?",undef,$packet->{order_id});
 	$data{order}=$order;
 
-	my $object=$dbh->selectrow_hashref("select * from objects where id=?",undef,$order->{object_id});
+	my $object=db::selectrow_hashref("select * from objects where id=?",undef,$order->{object_id});
 	$data{object}=$object;
 
-	my $sth=$dbh->prepare(qq/
+	my $sth=db::prepare(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
 from log l
 where (refto='packets' and refid = ?)
@@ -651,23 +610,22 @@ sub read_event_data
 {
 	my ($self,$id)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my %data;
-	my $event=$dbh->selectrow_hashref(qq{
+	my $event=db::selectrow_hashref(qq{
 select id,date,event,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,note,refto,refid,cause from log l where id=?}
 ,undef,$id);
 	return undef unless $event;
 	$data{event}=$event;
 
-	my $order=$dbh->selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
+	my $order=db::selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
 	$data{order}=$order;
 
 
-	my $packet=$dbh->selectrow_hashref("select * from packets where id=(select refid from log where refto='packets' and id=?)",undef,$event->{id});
+	my $packet=db::selectrow_hashref("select * from packets where id=(select refid from log where refto='packets' and id=?)",undef,$event->{id});
 	$data{packet}=$packet;
 
-	my $object=$dbh->selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
+	my $object=db::selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
 	$data{object}=$object;
 
 	my $orders=$data{orders}->{elements}=db::selectall_arrayref(qq{select * from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
@@ -676,7 +634,7 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	push @$orders,{id=>undef};
 	push @$packets,{id=>undef};
 
-	my $sth=$dbh->prepare(sprintf(qq/
+	my $sth=db::prepare(sprintf(qq/
 select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid, cause
 from log l
 where id=?
@@ -705,11 +663,9 @@ sub read_table
 	my $query=shift;
 	my @values=@_;
 
-	$self->connect() or return undef;
-
 	my $start=time;
 
-	my $sth=$dbh->prepare($query);
+	my $sth=db::prepare($query);
 	$sth->execute(@values);
 
 	my %result=(query=>$query,values=>[@values],header=>[map(encode("utf8",$_),@{$sth->{NAME}})],rows=>[]);
@@ -730,7 +686,6 @@ sub search_objects
 {
 	my ($self,$filter,$limit)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my %where;
 	$where{"1=?"}=1;
@@ -762,7 +717,6 @@ sub search_orders
 {
 	my ($self,$filter,$limit)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 	my $start=time;
 
 	my %where;
@@ -825,7 +779,6 @@ sub search_packets
 {
 	my ($self,$filter,$limit)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my %where;
 
@@ -875,21 +828,20 @@ sub search_events
 {
 	my ($self,$filter,$limit)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my @where;
-	push @where, "o.otd ~ ".$dbh->quote($cc->user->{otd}) if $cc->user->{otd};
-	push @where, "o.otd = ".$dbh->quote($filter->{otd}) if $filter->{otd};
-	push @where, "l.id = ".$dbh->quote($filter->{event_id}) if $filter->{event_id};
-	push @where, "l.date > ".$dbh->quote($filter->{from}) if $filter->{from};
-	push @where, "l.date <= ".$dbh->quote($filter->{to}) if $filter->{to};
-	push @where, "l.event = ".$dbh->quote($filter->{event}) if $filter->{event};
-	push @where, "l.who  in (select v2::uuid from sdata where r='ФИО сотрудника' and v1=".$dbh->quote($filter->{who}).")" if $filter->{who};
-	push @where, sprintf "lower(l.note) ~ lower(%s)", $dbh->quote($filter->{note}) if $filter->{note};
-	push @where, "l.refto = ".$dbh->quote($filter->{refto}) if $filter->{refto};
-	push @where, "l.refid = ".$dbh->quote($filter->{refid}) if $filter->{refid};
-	push @where, sprintf "lower(obj.address) ~ lower(%s)", $dbh->quote($filter->{address}) if $filter->{address};
-	push @where, sprintf "lower(obj.invent_number) ~ lower(%s)", $dbh->quote($filter->{invent_number}) if $filter->{invent_number};
+	push @where, "o.otd ~ ".db::quote($cc->user->{otd}) if $cc->user->{otd};
+	push @where, "o.otd = ".db::quote($filter->{otd}) if $filter->{otd};
+	push @where, "l.id = ".db::quote($filter->{event_id}) if $filter->{event_id};
+	push @where, "l.date > ".db::quote($filter->{from}) if $filter->{from};
+	push @where, "l.date <= ".db::quote($filter->{to}) if $filter->{to};
+	push @where, "l.event = ".db::quote($filter->{event}) if $filter->{event};
+	push @where, "l.who  in (select v2::uuid from sdata where r='ФИО сотрудника' and v1=".db::quote($filter->{who}).")" if $filter->{who};
+	push @where, sprintf "lower(l.note) ~ lower(%s)", db::quote($filter->{note}) if $filter->{note};
+	push @where, "l.refto = ".db::quote($filter->{refto}) if $filter->{refto};
+	push @where, "l.refid = ".db::quote($filter->{refid}) if $filter->{refid};
+	push @where, sprintf "lower(obj.address) ~ lower(%s)", db::quote($filter->{address}) if $filter->{address};
+	push @where, sprintf "lower(obj.invent_number) ~ lower(%s)", db::quote($filter->{invent_number}) if $filter->{invent_number};
 	scalar @where or push @where,'true';
 
 	$limit+0 or undef $limit;
@@ -922,7 +874,6 @@ sub dispatch_queue
 {
 	my ($self,$filter)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my @where;
 	push @where, "p.reg_code='raw'" if $filter->{type} eq 'Исходные';
@@ -962,7 +913,6 @@ sub read_run_status
 {
 	my ($self,$id)=@_;
 	defined $cc or return undef;
-	$self->connect() or return undef;
 
 	my %data;
 	#$data{running}{rows}=read_table($self,"select * from run where completed is null and started is not null order by id desc");
@@ -1166,10 +1116,10 @@ sub log_packet
 	my $last_event=shift;
 
 	foreach (values %$data) {undef $_ unless $_;};
-	my $query=sprintf "insert into log_old (event,who,note,file,message_id,refto,refid) values (%s,%s,%s,%s,%s,'packets',%s)",$dbh->quote($data->{event}),$dbh->quote($data->{who}),$dbh->quote($data->{note}),$dbh->quote($data->{file}),$dbh->quote($data->{message_id}),$dbh->quote($data->{packet_id});
+	my $query=sprintf "insert into log_old (event,who,note,file,message_id,refto,refid) values (%s,%s,%s,%s,%s,'packets',%s)",db::quote($data->{event}),db::quote($data->{who}),db::quote($data->{note}),db::quote($data->{file}),db::quote($data->{message_id}),db::quote($data->{packet_id});
 		
-	my $rv=$dbh->do($query);
-	packetproc::log(sprintf("log_old insert error\n%s\n%s",$query,$dbh->errstr)) if $rv!=1;
+	my $rv=db::do($query);
+	packetproc::log(sprintf("log_old insert error\n%s\n%s",$query,db::errstr)) if $rv!=1;
 
 	return $rv;
 }
@@ -1181,8 +1131,8 @@ sub set_packet_path
 	my $path=shift;
 
 
-	my $rv=$dbh->do("update packets set path=? where id=?",undef,$path,$packet_id);
-	packetproc::log(sprintf("packet update error\n%s",$dbh->errstr)) unless $rv;
+	my $rv=db::do("update packets set path=? where id=?",undef,$path,$packet_id);
+	packetproc::log(sprintf("packet update error\n%s",db::errstr)) unless $rv;
 
 	return $rv;
 }
@@ -1190,7 +1140,7 @@ sub set_packet_path
 sub get_who_email
 {
 	my ($self,$who)=@_;
-	my $r=$dbh->selectrow_hashref("select v1 as email from data where r='email сущности' and substring(v2,E'^\\\\S+')=?",undef,$who);
+	my $r=db::selectrow_hashref("select v1 as email from data where r='email сущности' and substring(v2,E'^\\\\S+')=?",undef,$who);
 	return $r->{email} if $r;
 }
 
