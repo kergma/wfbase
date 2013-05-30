@@ -1376,7 +1376,7 @@ join objects j on j.id=o.object_id
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
 	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
-	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
+	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
 }
@@ -1446,7 +1446,7 @@ join objects j on j.id=o.object_id
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
 	my %group_ordering=('замечания'=>1,'к принятию'=>2,'техплан'=>3,''=>4,'к закрытию'=>5);
-	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
+	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
 }
@@ -1460,13 +1460,14 @@ sub order_data
 	foreach (@{$o->{packets}})
 	{
 		$_->{status}=db::selectrow_hashref(qq/
-select event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
+select l.id as event_id, event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
 from log l 
 left join data d on d.r='ФИО сотрудника' and v2=l.who::text
 where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 /,undef,$_->{id});
 		return {error=>$DBI::errstr} unless defined $_->{status};
 	};
+	@{$o->{packets}}=sort {$b->{status}->{event_id} cmp $a->{status}->{event_id}} @{$o->{packets}};
 	return $o;
 }
 
@@ -1625,7 +1626,7 @@ join objects j on j.id=o.object_id
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
 	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
-	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}}} @a;
+	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
 }
