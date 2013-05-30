@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use parent 'Catalyst::Controller';
 
+no warnings 'uninitialized';
+
 #
 # Sets the actions in this controller to be registered with no prefix
 # so they function identically to actions created in MyApp.pm
@@ -96,7 +98,7 @@ sub auto :Private
 	if (!$c->user_exists)
 	{
 		$c->response->redirect('/auth/login');
-		$c->flash->{redirect_after_login} = '/' . $c->req->path;
+		$c->flash->{redirect_after_login} = $c->req->{env}->{REQUEST_URI};
 		return 0;
 	};
 	$c->model->log_activity($c->user->{souid});

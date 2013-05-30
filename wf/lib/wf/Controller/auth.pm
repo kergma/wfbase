@@ -5,6 +5,8 @@ use warnings;
 use base 'Catalyst::Controller::FormBuilder';
 use Data::Dumper;
 
+no warnings 'uninitialized';
+
 __PACKAGE__->config( 'Controller::FormBuilder' => {form_path => File::Spec->catfile( wf->path_to('root'))});
 
 =head1 NAME
