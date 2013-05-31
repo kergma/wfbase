@@ -1369,9 +1369,9 @@ join objects j on j.id=o.object_id
 		return $r if $r->{error};
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
-		$o->{group}='к получению' if $p->{type} eq 'к получению' and $p->{status}->{event} eq 'принят';
-		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
+		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
