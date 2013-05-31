@@ -1369,13 +1369,14 @@ join objects j on j.id=o.object_id
 		return $r if $r->{error};
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
-		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'к получению' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
-	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
+	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'к получению'=>4,'к закрытию'=>5);
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
@@ -1440,12 +1441,13 @@ join objects j on j.id=o.object_id
 		$o->{group}='к принятию' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
-		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
-	my %group_ordering=('замечания'=>1,'к принятию'=>2,'техплан'=>3,''=>4,'к закрытию'=>5);
+	my %group_ordering=('замечания'=>1,'к принятию'=>2,'к получению'=>3,''=>4,'к закрытию'=>5);
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
@@ -1624,12 +1626,13 @@ join objects j on j.id=o.object_id
 		$o->{group}='к принятию' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
-		$o->{group}='техплан' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='к закрытию' if $o->{group} eq 'техплан' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
 	};
-	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'техплан'=>4,'к закрытию'=>5);
+	my %group_ordering=('к принятию'=>1,''=>2,'замечания'=>3,'к получению'=>4,'к закрытию'=>5);
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
