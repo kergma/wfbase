@@ -1344,8 +1344,8 @@ join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
-and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \;
 
 	my @a;
@@ -1396,8 +1396,8 @@ from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
-and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \;
 
 	$inner=qq\
@@ -1599,8 +1599,8 @@ join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
-and (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ if $filter ne $operator and grep {(keys %$_)[0] eq $filter} @$coworkers;
 
 	my @a;
