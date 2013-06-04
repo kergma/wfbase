@@ -1370,7 +1370,7 @@ join objects j on j.id=o.object_id
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
 		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
-		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 
@@ -1442,7 +1442,7 @@ join objects j on j.id=o.object_id
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
 		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
-		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
@@ -1627,7 +1627,7 @@ join objects j on j.id=o.object_id
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
 		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
-		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp});
+		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
