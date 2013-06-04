@@ -132,6 +132,7 @@ select s.*,
 (select comma(distinct rectype) from recv where recid<>? and (recid=s.v1 or recid=s.v2)) as reftype 
 from
 (select id,v1,r,null as v2 from data where v2=? union select id,null as v1,r,v2 from data where v1=?) s
+order by r,refdef
 /,{Slice=>{}},$id,$id,$id,$id);
 
 }
