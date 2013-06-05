@@ -1389,13 +1389,20 @@ sub orders_being_conducted
 	my $operator=shift;
 	my $filter=shift;
 
-
 	my $inner=qq\
 select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
+union
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from log l
+join orders o on o.id=l.refid and l.refto='orders'
+where l.who=?
+and not exists (select 1 from packets where order_id=o.id)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \;
@@ -1405,8 +1412,17 @@ select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
+and o.ordno like '%11'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 having (select event from log where id=max(l.id))<>'закрыт'
+union
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from log l
+join orders o on o.id=l.refid and l.refto='orders'
+where o.sp=?
+and not exists (select 1 from packets where order_id=o.id)
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ if $filter ne $operator;
 
 	$inner=qq\
@@ -1416,6 +1432,14 @@ join log l on l.refto='orders' and l.refid=o.id
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 having (select event from log where id=max(l.id))<>'закрыт'
+union
+select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+from log l
+join orders o on o.id=l.refid and l.refto='orders'
+where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
+and not exists (select 1 from packets where order_id=o.id)
+group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ unless $filter;
 
 	my @a;
@@ -1429,7 +1453,7 @@ $inner
 order by event_id desc
 ) o 
 join objects j on j.id=o.object_id
-/, {Slice=>{}},$filter||$operator);
+/, {Slice=>{}},$filter||$operator,$filter||$operator);
 	return {error=>$DBI::errstr} unless $r;
 	push @a, @$r;
 
@@ -1470,6 +1494,17 @@ where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 		return {error=>$DBI::errstr} unless defined $_->{status};
 	};
 	@{$o->{packets}}=sort {$b->{status}->{event_id} cmp $a->{status}->{event_id}} @{$o->{packets}};
+	unless (scalar @{$o->{packets}})
+	{
+		$o->{status}=db::selectrow_hashref(qq/
+select l.id as event_id, event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
+from log l 
+left join data d on d.r='ФИО сотрудника' and v2=l.who::text
+where refto='orders' and refid=? order by l.id desc, d.id desc limit 1
+/,undef,$o->{order_id});
+		return {error=>$DBI::errstr} unless defined $o->{status};
+
+	};
 	return $o;
 }
 
