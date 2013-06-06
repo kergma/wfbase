@@ -1604,11 +1604,7 @@ from packets p
 left join orders o on o.id=p.order_id
 where
 p.type in( 'данные','техплан')
-and exists (select 1 from log l where refto='packets' and refid=p.id and event='загружен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
-and exists (
-select 1 from log l where refto='packets' and refid=p.id and event='загружен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)
-and (p.type<>'данные' or exists (select 1 from data where r='принадлежит структурному подразделению' and v1=l.who::text and v2=o.sp::text))
-)
+and exists (select 1 from log l where refto='packets' and refid=p.id and event='загружен' and lower(coalesce(note,'')) !~ 'на подпись' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
 and (
 o.sp::text in (select item from items where souid=? and sp_name is not null)
 or o.id in (select refid from log where refto='orders' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
