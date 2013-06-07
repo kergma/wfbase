@@ -1412,7 +1412,6 @@ select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
-and o.ordno like '%11'
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 having (select event from log where id=max(l.id))<>'закрыт'
 union
