@@ -1609,6 +1609,13 @@ o.sp::text in (select item from items where souid=? and sp_name is not null)
 or o.id in (select refid from log where refto='orders' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
 or p.id in (select refid from log where refto='packets' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
 )
+union
+select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where refid in (o.id,p.id)) as event_id
+from packets p
+join orders o on o.id=p.order_id
+where
+p.type='данные'
+and exists ( select 1 from log l join data d on d.r='наименование структурного подразделения' and d.v2::uuid=l.who and d.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1='$operator') where refto='packets' and refid=p.id and event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
 \;
 
 	my $coworkers=get_coworkers_list($self,$operator);
