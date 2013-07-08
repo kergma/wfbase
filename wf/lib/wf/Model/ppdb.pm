@@ -457,7 +457,17 @@ sub log_event
 	my %data=scalar(@_)==1?%{$_[0]}:(@_);
 	my $event_id=packetproc::newid();
 	my $rv=db::do("insert into log (id,event,who,note,refto, refid, cause) values (?,?,?,?,?,?,?)",undef,$event_id,$data{event},$data{who},$data{note},$data{refto},$data{refid},$data{cause});
+	close_order($self,$data{refid}) if $data{event} eq 'закрыт' and $data{refto} eq 'orders';
+	close_order($self,$data{refid},1) if $data{event} eq 'возобновлён' and $data{refto} eq 'orders';
 	return $event_id if $rv;
+}
+
+sub close_order
+{
+	my ($self,$id,$reopen)=@_;
+	my $closed=$reopen?'null':'current_timestamp';
+	my $rv=db::do("update log set closed=$closed where refid in (select ?::uuid union select id from packets where order_id=?)",undef,$id,$id);
+	return $rv;
 }
 
 sub read_order_data
