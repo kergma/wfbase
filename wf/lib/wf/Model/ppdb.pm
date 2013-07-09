@@ -1353,9 +1353,9 @@ from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
+and l.closed is null
 and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \;
 
 	my @a;
@@ -1405,16 +1405,16 @@ from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
+and l.closed is null
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 union
 select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where l.who=?
+and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \;
 
 	$inner=qq\
@@ -1422,16 +1422,16 @@ select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
+and l.closed is null
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where id=max(l.id))<>'закрыт'
 union
 select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where o.sp=?
+and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ if $filter ne $operator;
 
 	$inner=qq\
@@ -1439,16 +1439,16 @@ select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
+and l.closed is null
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where id=max(l.id))<>'закрыт'
 union
 select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
+and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ unless $filter;
 
 	my @a;
@@ -1498,7 +1498,7 @@ sub order_data
 select l.id as event_id, event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
 from log l 
 left join data d on d.r='ФИО сотрудника' and v2=l.who::text
-where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
+where closed is null and refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 /,undef,$_->{id});
 		return {error=>$DBI::errstr} unless defined $_->{status};
 	};
@@ -1509,7 +1509,7 @@ where refto='packets' and refid=? order by l.id desc, d.id desc limit 1
 select l.id as event_id, event,note,to_char(date,'yyyy-mm-dd hh24:mi') as datef, who, coalesce(d.v1,l.who::text) as fio
 from log l 
 left join data d on d.r='ФИО сотрудника' and v2=l.who::text
-where refto='orders' and refid=? order by l.id desc, d.id desc limit 1
+where closed is null and refto='orders' and refid=? order by l.id desc, d.id desc limit 1
 /,undef,$o->{order_id});
 		return {error=>$DBI::errstr} unless defined $o->{status};
 
@@ -1608,24 +1608,24 @@ sub orders_being_dispatched
 
 
 	my $inner=qq\
-select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where refid in (o.id,p.id)) as event_id
+select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
 from packets p
 left join orders o on o.id=p.order_id
 where
 p.type in( 'данные','техплан')
-and exists (select 1 from log l where refto='packets' and refid=p.id and event='загружен' and lower(coalesce(note,'')) !~ 'на подпись' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
+and exists (select 1 from log l where closed is null and refto='packets' and refid=p.id and event='загружен' and lower(coalesce(note,'')) !~ 'на подпись' and not exists (select 1 from log where closed is null and refto=l.refto and refid=l.refid and id>l.id))
 and (
 o.sp::text in (select item from items where souid=? and sp_name is not null)
-or o.id in (select refid from log where refto='orders' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
-or p.id in (select refid from log where refto='packets' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
+or o.id in (select refid from log where closed is null and refto='orders' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
+or p.id in (select refid from log where closed is null and refto='packets' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
 )
 union
-select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where refid in (o.id,p.id)) as event_id
+select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
 from packets p
 join orders o on o.id=p.order_id
 where
 p.type='данные'
-and exists ( select 1 from log l join data d on d.r='наименование структурного подразделения' and d.v2::uuid=l.who and d.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1='$operator') where refto='packets' and refid=p.id and event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))
+and exists ( select 1 from log l join data d on d.r='наименование структурного подразделения' and d.v2::uuid=l.who and d.v2 in (select v2 from data where l.closed is null and r='принадлежит структурному подразделению' and v1='$operator') where refto='packets' and refid=p.id and event='назначен' and not exists (select 1 from log where closed is null and refto=l.refto and refid=l.refid and id>l.id))
 \;
 
 	my $coworkers=get_coworkers_list($self,$operator);
@@ -1635,8 +1635,8 @@ select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
+and l.closed is null
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where id=max(l.id))<>'закрыт'
 \ if $filter ne $operator;
 
 	$inner=qq\
@@ -1645,9 +1645,9 @@ from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
-and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
+and l.closed is null
+and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where closed is null and refto=l.refto and refid=l.refid and id>l.id)))
 group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
-having (select event from log where refto='orders' and refid=o.id order by id desc limit 1)<>'закрыт'
 \ if $filter ne $operator and grep {(keys %$_)[0] eq $filter} @$coworkers;
 
 	my @a;
@@ -1674,7 +1674,7 @@ join objects j on j.id=o.object_id
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
 		$o->{group}='к получению' if $p->{type} eq 'техплан' and $p->{status}->{event} eq 'принят';
-		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
+		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where l.closed is null and who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
