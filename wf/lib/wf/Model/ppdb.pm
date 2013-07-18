@@ -103,6 +103,7 @@ sub cached_array_ref
 	my $qkey=$md5->hexdigest();
 
 	my $result=$cc->cache->get("aref-".$qkey);
+	undef $result if $opts->{update};
 	unless ($result)
 	{
 		$result=array_ref(@_);
@@ -1683,6 +1684,20 @@ join objects j on j.id=o.object_id
 	@a=sort {$group_ordering{$a->{group}} <=> $group_ordering{$b->{group}} or $b->{packets}[0]->{status}->{event_id} cmp $a->{packets}[0]->{status}->{event_id}} @a;
 
 	return { ARRAY=>\@a, };
+}
+
+sub autoassign
+{
+	my ($self,$souid,$autoassign)=@_;
+
+	my $r=shift cached_array_ref($self,"select * from data where r='автоматическое назначение пакетов оператору' and v2=?",$souid);
+	return $r->{v1} ne 'отключено' unless defined $autoassign;
+
+	db::do("update data set v1='отключено' where id=?",undef,$r->{id}) if !$autoassign and $r->{v1} ne 'отключено'; 
+	db::do("delete from data where id=?",undef,$r->{id}) if $r->{id} and $autoassign;
+	my $rv=db::do("insert into data (v1,r,v2) values (?,?,?)",undef,'отключено','автоматическое назначение пакетов оператору',$souid) if !$autoassign and !$r->{id};
+	$r=cached_array_ref($self,{update=>1},"select * from data where r='автоматическое назначение пакетов оператору' and v2=?",$souid);
+	return $autoassign;
 }
 
 1;
