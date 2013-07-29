@@ -794,20 +794,20 @@ sub search_packets
 	my %where;
 
 	$where{qq/(o.sp::text in (select item from items where souid=? and sp_name is not null)
-or o.id in (select refid from log where id>present() and refid>present() and refto='orders' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
-or p.id in (select refid from log where id>present() and refid>present() and refto='packets' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
+or o.id in (select refid from log where  refto='orders' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
+or p.id in (select refid from log where refto='packets' and who::text in (select item from items where souid=? and (sp_name is not null or item=souid)))
 )
 /}=[$cc->user->{souid},$cc->user->{souid},$cc->user->{souid}];
 
 	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
 	$where{"o.sp = ?"}=$filter->{sp} if $filter->{sp};
-	$where{qq\(o.id in (select refid from log where id>present() and refid>present() and refto='orders' and  who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))
-or p.id in (select refid from log where id>present() and refid>present() and refto='packets' and who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?))))
+	$where{qq\(o.id in (select refid from log where refto='orders' and  who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))
+or p.id in (select refid from log where refto='packets' and who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?))))
 \}=[$filter->{who},$filter->{who}] if $filter->{who};
 	$where{"p.type = ?"}=$filter->{type} if $filter->{type};
 	$where{"exists (select 1 from files fi where fi.id=p.container and lower(fi.name)~lower(?))"}=$filter->{file} if $filter->{file};
-	$where{"exists (select 1 from log l where id>present() and refid>present() and refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
+	$where{"exists (select 1 from log l where refto='packets' and refid=p.id and event=? and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id))"}=$filter->{status} if $filter->{status};
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
@@ -822,11 +822,10 @@ select p.id as packet_id, o.sp, type, container
 from packets p
 left join orders o on o.id=p.order_id
 where 
-p.id>present() and o.id>present() and 
 %s
 order by p.id desc %s
 ) s
-left join log l on l.id>present() and l.refid>present() and l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
+left join log l on l.refto='packets' and l.refid=s.packet_id and not exists (select 1 from log where refto='packets' and refid=l.refid and id>l.id)
 ;
 --select * from pg_temp.vi;
 },join(" and ",keys %where),$limit),$filter,map(@{arrayref $_},grep {$_ ne 'novalue'} values %where));
