@@ -1699,4 +1699,12 @@ sub autoassign
 	return $autoassign;
 }
 
+sub move_packet
+{
+	my ($self, $packet_id, $order_id)=@_;
+	db::do("update packets set order_id=? where id=?",undef,$order_id||undef,$packet_id);
+	db::do("update log set closed=current_timestamp where refto='packets' and refid=? and closed is null",undef,$packet_id) unless $order_id;
+	db::do("update log set closed=(select closed from log where refto='orders' and refid=? order by id desc limit 1) where refto='packets' and refid=?",undef,$order_id,$packet_id) if $order_id;
+}
+
 1;
