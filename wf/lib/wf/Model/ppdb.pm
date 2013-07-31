@@ -1707,4 +1707,17 @@ sub move_packet
 	db::do("update log set closed=(select closed from log where refto='orders' and refid=? order by id desc limit 1) where refto='packets' and refid=?",undef,$order_id,$packet_id) if $order_id;
 }
 
+sub order_address
+{
+	my ($self, $order_id)=@_;
+	return db::selectval_scalar("select address from objects j join orders o on o.object_id=j.id where o.id=?",undef,$order_id);
+
+}
+sub order_closed
+{
+	my ($self, $order_id)=@_;
+	return db::selectval_scalar("select 1 where not exists (select 1 from log where closed is null and refto='orders' and refid=?)",undef,$order_id)//0;
+
+}
+
 1;
