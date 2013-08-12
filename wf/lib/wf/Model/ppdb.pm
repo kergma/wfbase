@@ -208,7 +208,7 @@ sub get_outersp_list
 select v2 as sp, shortest(v1) as spname, 1 as ord from data d where r='наименование структурного подразделения' and v2 in ('a9b7079b-26de-49e3-8d16-9e141d644faf','d86e0ad4-4824-430b-9790-5e78e3a87cae') group by v2
 union
 select d.v2 as sp, shortest(d.v1) as spname, 2 as ord from (
-select v2,items_of(v2) from data where lower(v1) like '%отделение%' and r='свойства структурного подразделения' 
+select v2,items_of(v2) from data where r='принадлежит структурному подразделению' and v2='7265a431-4510-4b19-bb56-0c1c31123283' 
 ) s 
 join data d on d.r='наименование структурного подразделения' and d.v2 in (s.v2,(s.items_of).item)
 group by d.v2
