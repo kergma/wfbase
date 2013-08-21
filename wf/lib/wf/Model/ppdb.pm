@@ -13,6 +13,7 @@ use Time::HiRes 'usleep';
 use packetproc;
 use db;
 use util;
+no warnings 'uninitialized';
 
 
 
@@ -525,7 +526,7 @@ sub read_object_data
 	my ($self,$id)=@_;
 	defined $cc or return undef;
 
-	my $r=db::selectrow_hashref("select * from objects o where id=? and (exists (select 1 from orders where object_id=o.id and otd ~ ?) or not exists (select 1 from orders where object_id=o.id))",undef,$id,$cc->user->{otd});
+	my $r=db::selectrow_hashref("select * from objects j where id=? and (exists (select 1 from orders where object_id=j.id and sp::text in (select item from items where souid=? and sp_name is not null)) or not exists (select 1 from orders where object_id=j.id))",undef,$id,$cc->user->{souid});
 	return undef unless $r;
 
 	my %data;
