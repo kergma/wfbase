@@ -487,7 +487,7 @@ from orders o where id=?
 and (o.sp::text in (select item from items where souid=? and sp_name is not null)
 or o.id in (select refid from log where refto='orders' and (who::text in (select item from items where souid=? and sp_name is not null)) or who=?))
 },undef,$id,$cc->user->{souid},$cc->user->{souid},$cc->user->{souid});
-	return undef unless $r;
+	return {order=>{id=>$id}} unless $r;
 	my %data;
 	$data{order}=$r;
 	$r=db::selectrow_hashref("select * from objects where id=?",undef,$r->{object_id});
@@ -600,7 +600,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
 from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
