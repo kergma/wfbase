@@ -48,7 +48,7 @@ sub ACCEPT_CONTEXT
 
 sub sconnect
 {
-	my $sdbh=DBI->connect("dbi:Pg:dbname=mailproc;host=ppdb", 'stat', undef, {AutoCommit => 1});
+	my $sdbh=DBI->connect("dbi:Pg:dbname=worker;host=ppdb", 'stat', undef, {AutoCommit => 1});
 	$sdbh->do("create function pg_temp.wfuser() returns uuid as \$\$select '${\($cc->user->{souid})}'::uuid\$\$ language sql");
 	return $sdbh;
 }
