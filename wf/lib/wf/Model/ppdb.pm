@@ -277,10 +277,11 @@ sub get_event_list
 {
 	my ($self,$refto)=@_;
 	defined $cc or return undef;
+	my $event=db::selectval_scalar("select uuid_generate_v1o(now()-6*interval '1 month')");
 
 	my $reftow="";
 	$refto and $reftow="and refto=".db::quote($refto);
-	return cached_array_ref($self,"select event from log where event is not null $reftow and id>uuid_generate_v1o(now()-6*interval '1 month') group by event order by event");
+	return cached_array_ref($self,"select event from log where event is not null $reftow and id>? group by event order by event",$event);
 }
 
 sub get_who_list
