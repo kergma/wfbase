@@ -7,7 +7,7 @@
 [% FOREACH f=fields%]<td>[%IF h.display.$f%][%h.display.$f%][%ELSE%][%f%][%END%]</td>[%END%]
 </tr>
 [% FOREACH r=h.rows%]
-<tr>
+<tr[%IF r.display.hilight%] style="background:[%r.display.hilight%]"[%END%]>
 [%- FOREACH f=fields%]<td>[%IF h.display.href.$f%]<a href="[%h.display.href.$f%][%r.$f%]">[%END%][%r.$f%][%IF h.display.href.$f%]</a>[%END%]</td>[%END%]
 </tr>
 [%- END %][%# rows %]

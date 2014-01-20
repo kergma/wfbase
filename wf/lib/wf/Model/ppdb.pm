@@ -609,10 +609,10 @@ or (refto='packets' and refid in (select id from packets where order_id = ?))
 or (refto='objects' and refid=?)
 order by id desc/);
 	$sth->execute($packet->{id},$order->{id},$order->{id},$object->{id});
-	my %events=(elements=>[]);
+	my %events=(rows=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$events{elements}},$r;
+		push @{$events{rows}},$r;
 	};
 	$sth->finish;
 	$data{events}=\%events;
