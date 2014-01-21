@@ -496,10 +496,10 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 
 	my $sth=db::prepare("select * from packets where order_id=? order by id desc");
 	$sth->execute($id);
-	my %packets=(elements=>[]);
+	my %packets=(rows=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$packets{elements}},$r;
+		push @{$packets{rows}},$r;
 	};
 	$sth->finish;
 	$data{packets}=\%packets;
@@ -512,10 +512,10 @@ or (refto='packets' and refid in (select id from packets where order_id=?))
 or (refto='objects' and refid=(select object_id from orders where id=?))
 order by id desc/);
 	$sth->execute($id,$id,$id);
-	my %events=(elements=>[]);
+	my %events=(rows=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$events{elements}},$r;
+		push @{$events{rows}},$r;
 	};
 	$sth->finish;
 	$data{events}=\%events;
