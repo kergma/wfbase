@@ -536,41 +536,40 @@ sub read_object_data
 	my %orders;
 	my $sth=db::prepare(qq{
 select o.*,
-(select to_char(date,'yyyy-mm-dd') from log_old where event='принят' and refto='orders' and refid=o.id order by id desc limit 1) as accepted,
-(select to_char(date,'yyyy-mm-dd') from log_old where event='оплачен' and refto='orders' and refid=o.id order by id desc limit 1) as paid
+(select to_char(date,'yyyy-mm-dd') from log where event='принят' and refto='orders' and refid=o.id order by id desc limit 1) as accepted,
+(select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and refto='orders' and refid=o.id order by id desc limit 1) as paid
 from orders o where object_id=? order by id desc
 });
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$orders{elements}},$r;
+		push @{$orders{rows}},$r;
 	};
 	$sth->finish;
 	$data{orders}=\%orders;
 
-	my %packets=(elements=>[]);
+	my %packets=(rows=>[]);
 	$sth=db::prepare("select * from packets where order_id in (select id from orders where object_id=?) order by id desc");
 	$sth->execute($id);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$packets{elements}},$r;
+		push @{$packets{rows}},$r;
 	};
 	$sth->finish;
 	$data{packets}=\%packets;
 
 	$sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,who,refto,refid,file,
-(select id from timeline t where t.basename=l.file order by id desc limit 1) as message
-from log_old l
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
+from log l
 where (refto='orders' and refid in (select id from orders where object_id=?))
 or (refto='packets' and refid in (select id from packets where order_id in (select id from orders where object_id=?)))
 or (refto='objects' and refid=?)
 order by id desc/);
 	$sth->execute($id,$id,$id);
-	my %events=(elements=>[]);
+	my %events=(rows=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$events{elements}},$r;
+		push @{$events{rows}},$r;
 	};
 	$sth->finish;
 	$data{events}=\%events;
@@ -641,8 +640,8 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	my $object=db::selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
 	$data{object}=$object;
 
-	my $orders=$data{orders}->{elements}=db::selectall_arrayref(qq{select * from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
-	my $packets=$data{packets}->{elements}=db::selectall_arrayref("select * from packets where order_id in (select refid from log where refto='orders' and id=? union select id from orders where object_id=(select refid from log where refto='objects' and id=?)) order by id desc",{Slice=>{}},$id,$id);
+	my $orders=$data{orders}->{rows}=db::selectall_arrayref(qq{select * from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
+	my $packets=$data{packets}->{rows}=db::selectall_arrayref("select * from packets where order_id in (select refid from log where refto='orders' and id=? union select id from orders where object_id=(select refid from log where refto='objects' and id=?)) order by id desc",{Slice=>{}},$id,$id);
 
 	push @$orders,{id=>undef};
 	push @$packets,{id=>undef};
@@ -657,10 +656,10 @@ or (refto='packets' and refid in (%s))
 or (refto='objects' and refid=?)
 order by id desc/,join(',',map {'?'} @$orders),join(',',map {'?'} @$packets)));
 	$sth->execute($event->{id},$event->{refto},$event->{refid},map ($_->{id},@$orders),map ($_->{id}, @$packets),$object->{id});
-	my %events=(elements=>[]);
+	my %events=(rows=>[]);
 	while (my $r=$sth->fetchrow_hashref())
 	{
-		push @{$events{elements}},$r;
+		push @{$events{rows}},$r;
 	};
 	$sth->finish;
 	$data{events}=\%events;
