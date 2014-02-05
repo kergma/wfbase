@@ -390,6 +390,7 @@ where lo_so.r='логин сотрудника' and (lo_so.v1=? or lo_so.v2=?)
 	push @{$data{roles}}, 'отправляющий' if grep {/наблюдающий|оператор/} @{$data{roles}};
 
 	push @{$data{roles}}, 'запрашивающий' if db::selectval_scalar("select 1 from context_of('21c02bf5-9968-4eb8-9f27-ebd4d60acc8c',?)",undef,$data{souid});
+	push @{$data{roles}}, 'подписант' if scalar(@{get_signers($self,$data{souid})});
 
 	$data{otd}='';
 
@@ -1665,6 +1666,14 @@ sub order_closed
 	my ($self, $order_id)=@_;
 	return db::selectval_scalar("select 1 where not exists (select 1 from log where closed is null and refto='orders' and refid=?)",undef,$order_id)//0;
 
+}
+
+sub get_signers
+{
+	my ($self, $signant)=@_;
+	#return [{'34cedadb-4578-4009-bdd0-358a9d2647e4'=>'Лакомая Ольга Николаевна'},{'6cba718e-fe24-4ffd-9900-29bcc979de52'=>'Пушкин Сергей Валерьевич'}];
+	#return [{'34cedadb-4578-4009-bdd0-358a9d2647e4'=>'Лакомая Ольга Николаевна'}];
+	return options_list($self,{cache_key=>$signant},"select d.v2,(latest(d.*)).v1 from data s join data d on d.r='ФИО сотрудника' and d.v2=s.v1 where s.r='оператор ЭЦП' and s.v1=? group by d.v2 order by 2",$signant);
 }
 
 1;
