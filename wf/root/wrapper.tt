@@ -57,7 +57,7 @@
 		[% IF c.check_any_user_role('пользователь','оператор','диспетчер','администратор') %]
 		<li><a href="#">Загрузка</a>
 			<ul>
-				<li><a href="/upload/packet">Пакет</a></li>
+				<!--<li><a href="/upload/packet">Пакет</a></li>-->
 				<li><a href="/reqproc/create">Запрос сведений</a></li>
 				<li><a href="/ordproc/create">Заказ</a></li>
 			</ul>
