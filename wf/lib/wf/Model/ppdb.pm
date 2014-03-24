@@ -1121,7 +1121,6 @@ sub identify_order
 	$a->{year}=$year;
 	$a->{spdata}=db::selectrow_hashref("select v1 as code, v2 as uid, (select shortest(v1) from data where r='наименование структурного подразделения' and v2=d.v2) as name from data d where r='код структурного подразделения' and v1=?",undef,$spcode);
 
-
 	$a->{order}=db::selectrow_hashref(qq/
 select * from orders o where substr(ordno,3,6)=? and sp=? and year=? and objno=?
 and (o.sp::text in (select item from items where souid=? and sp_name is not null)
@@ -1424,7 +1423,7 @@ join objects j on j.id=o.object_id
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
 		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой/ and $p->{status}->{event} eq 'принят';
-		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
+		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.closed is null and l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
 		$_->{file}=storage::tree_of($_->{container},\@{$_->{filelist}}) foreach $o->{group}?($o->{packets}->[0]):@{$o->{packets}};
