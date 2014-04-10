@@ -2,7 +2,7 @@
 [%h=n.value%]
 [%UNLESS footer%]
 [%IF n.title and n.title.substr(0,1)%]<div>[%n.title%][%IF c.check_any_user_role('разработчик')%] ([%n.key%])[%END%]</div>[%END%]
-[%IF h.text and h.display and !footer%][%z.key="text" z.value=h.text%][%INCLUDE scalar.tt n=z%][%END%]
+[%IF h.display.header and !footer%][%z.key="text" z.value=h.display.header%][%INCLUDE scalar.tt n=z%][%END%]
 [%END-%]
 
 [%IF h.form%]
