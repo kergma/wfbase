@@ -88,6 +88,7 @@ sub auto :Private
 		return 1;
 	};
 
+	$c->request->{remote_ip}=$c->request->{env}->{HTTP_X_REAL_IP}||$c->request->{address};
 	if (!$c->user_exists and $c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
 	{
 		my $uid;
