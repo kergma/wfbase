@@ -506,7 +506,7 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	$data{packets}=\%packets;
 
 	$sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
 from log l
 where (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id=?))
@@ -560,7 +560,7 @@ from orders o where object_id=? order by id desc
 	$data{packets}=\%packets;
 
 	$sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
 from log l
 where (refto='orders' and refid in (select id from orders where object_id=?))
 or (refto='packets' and refid in (select id from packets where order_id in (select id from orders where object_id=?)))
@@ -601,7 +601,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
 from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
@@ -648,7 +648,7 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	push @$packets,{id=>undef};
 
 	my $sth=db::prepare(sprintf(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r='ФИО сотрудника' and v2::uuid=l.who limit 1),who::text) as who,refto,refid, cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who,refto,refid, cause
 from log l
 where id=?
 or (refto=? and refid=?)
