@@ -1320,7 +1320,7 @@ group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 	my $r;
 	$r=db::selectall_arrayref(qq/
 select o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
