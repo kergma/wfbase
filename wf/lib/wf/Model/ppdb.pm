@@ -506,7 +506,7 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	$data{packets}=\%packets;
 
 	$sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who,refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select shortest(v1) from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who),who::text) as who,refto,refid,cause
 from log l
 where (refto='orders' and refid=?)
 or (refto='packets' and refid in (select id from packets where order_id=?))
@@ -560,7 +560,7 @@ from orders o where object_id=? order by id desc
 	$data{packets}=\%packets;
 
 	$sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select shortest(v1) from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who),who::text) as who, who as whoid, refto,refid,cause
 from log l
 where (refto='orders' and refid in (select id from orders where object_id=?))
 or (refto='packets' and refid in (select id from packets where order_id in (select id from orders where object_id=?)))
@@ -601,7 +601,7 @@ from packets p where id=?}
 	$data{object}=$object;
 
 	my $sth=db::prepare(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who, who as whoid, refto,refid,cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select shortest(v1) from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who),who::text) as who, who as whoid, refto,refid,cause
 from log l
 where (refto='packets' and refid = ?)
 or (refto='orders' and refid=?)
@@ -648,7 +648,7 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	push @$packets,{id=>undef};
 
 	my $sth=db::prepare(sprintf(qq/
-select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select v1 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who limit 1),who::text) as who,refto,refid, cause
+select id,to_char(date,'yyyy-mm-dd hh24:mi') as date,event,note,coalesce((select shortest(v1) from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and v2::uuid=l.who),who::text) as who,refto,refid, cause
 from log l
 where id=?
 or (refto=? and refid=?)
@@ -819,7 +819,7 @@ or p.id in (select refid from log where refto='packets' and who::text in (select
 select
 s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, l.id as status_event,
 (select name from files where id=s.container) as container_name,
-(select v1 from sdata where r='наименование структурного подразделения' and v2=s.sp::text order by length(v1) limit 1) as spname
+(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=s.sp::text) as spname
 from (
 select p.id as packet_id, o.sp, type, container
 from packets p
@@ -1403,7 +1403,7 @@ group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 	my $r;
 	$r=db::selectall_arrayref(qq/
 select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
@@ -1475,7 +1475,7 @@ sub read_order_info
 {
 	my ($self,$order_id)=@_;
 	return db::selectrow_hashref(qq/select o.id as order_id,*,
-(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status
 from orders o join objects j on j.id=o.object_id where o.id=?/,undef,$order_id);
@@ -1602,7 +1602,7 @@ group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
 	my $r;
 	$r=db::selectall_arrayref(qq/
 select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select v1 from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
