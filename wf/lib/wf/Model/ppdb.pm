@@ -185,6 +185,16 @@ sub get_otd_list
 	defined $cc or return undef;
 	return cached_array_ref($self,"select otd from orders where otd ~ ? group by otd order by otd",$cc->user->{otd});
 }
+sub get_org_list
+{
+	my ($self,$souid)=@_;
+	return options_list($self,{cache_key=>$souid},qq[
+select c.container as org, (select shortest(v1) from data where r='наименование структурного подразделения' and v2=c.container ) as org_name
+from containers_of(?) c
+join data o on o.r='принадлежит структурному подразделению' and o.v1=c.container and o.v2='61b45bd4-d36a-44d0-bcb0-0949a37c27b7' /* Организации */
+order by 2
+],$souid);
+}
 sub get_sp_list
 {
 	my ($self,$souid)=@_;
@@ -1166,7 +1176,7 @@ sub create_order
 	$a->{year}=$1&&($1+2000);
 	$a->{ordno}=$2&&"00$2";
 	undef $a->{objno} unless $a->{objno};
-	my $rv=db::do("insert into orders (id,sp,year,ordno,objno,object_id) values (?,?,?,?,?,?)",undef,$a->{order_id},$a->{sp},$a->{year},$a->{ordno},$a->{objno},$a->{object}->{id});
+	my $rv=db::do("insert into orders (id,org,sp,year,ordno,objno,object_id) values (?,?,?,?,?,?,?)",undef,$a->{order_id},$a->{org},$a->{sp},$a->{year},$a->{ordno},$a->{objno},$a->{object}->{id});
 	$a->{error}=db::errstr unless $rv;
 	return $a;
 
