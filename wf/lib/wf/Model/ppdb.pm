@@ -495,6 +495,8 @@ sub read_order_data
 
 	my $r=db::selectrow_hashref(qq{
 select o.*,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as ostatus,
 (select to_char(date,'yyyy-mm-dd hh24:mi') from log where refto='orders' and refid=o.id order by id desc limit 1) as osdate,
 (select event from log where refto='packets' and refid in (select id from packets where order_id=o.id) order by id desc limit 1) as pstatus,
@@ -551,6 +553,8 @@ sub read_object_data
 	my %orders;
 	my $sth=db::prepare(qq{
 select o.*,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select to_char(date,'yyyy-mm-dd') from log where event='принят' and refto='orders' and refid=o.id order by id desc limit 1) as accepted,
 (select to_char(date,'yyyy-mm-dd') from log where event='оплачен' and refto='orders' and refid=o.id order by id desc limit 1) as paid
 from orders o where object_id=? order by id desc
@@ -608,7 +612,7 @@ from packets p where id=?}
 	return undef unless $packet;
 	$data{packet}=$packet;
 
-	my $order=db::selectrow_hashref("select * from orders where id=?",undef,$packet->{order_id});
+	my $order=db::selectrow_hashref("select *, sname_of(org::text) as orgname, sname_of(sp::text) as spname from orders where id=?",undef,$packet->{order_id});
 	$data{order}=$order;
 
 	my $object=db::selectrow_hashref("select * from objects where id=?",undef,$order->{object_id});
@@ -645,7 +649,7 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	return undef unless $event;
 	$data{event}=$event;
 
-	my $order=db::selectrow_hashref("select * from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
+	my $order=db::selectrow_hashref("select *,sname_of(org::text) as orgname, sname_of(sp::text) as spname from orders where id=(select coalesce((select refid where refto='orders'),(select order_id from packets where id=refid and refto='packets')) from log where id=?)",undef,$event->{id});
 	$data{order}=$order;
 
 
@@ -655,7 +659,7 @@ select id,date,event,coalesce((select v1 from sdata where r='ФИО сотруд
 	my $object=db::selectrow_hashref("select * from objects where id=(select coalesce((select l.refid where l.refto='objects'),(select object_id from orders where id=l.refid and l.refto='orders'),(select o.object_id from orders o join packets p on p.order_id=o.id where p.id=l.refid and l.refto='packets')) from log l where id=?)",undef,$id);
 	$data{object}=$object;
 
-	my $orders=$data{orders}->{rows}=db::selectall_arrayref(qq{select * from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
+	my $orders=$data{orders}->{rows}=db::selectall_arrayref(qq{select *,sname_of(org::text) as orgname, sname_of(sp::text) as spname from orders o where id in (select refid from log where refto='orders' and id=?) or object_id in (select refid from log where refto='objects' and id=?) order by id desc},{Slice=>{}},$id,$id);
 	my $packets=$data{packets}->{rows}=db::selectall_arrayref("select * from packets where order_id in (select refid from log where refto='orders' and id=? union select id from orders where object_id=(select refid from log where refto='objects' and id=?)) order by id desc",{Slice=>{}},$id,$id);
 
 	push @$orders,{id=>undef};
@@ -752,6 +756,7 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 /}=[$cc->user->{souid},$cc->user->{souid},$cc->user->{souid}];
 
 	$where{"o.id=?"}=$filter->{order_id} if $filter->{order_id};
+	$where{"o.org=?"}=$filter->{org} if $filter->{org};
 	$where{"o.sp=?"}=$filter->{sp} if $filter->{sp};
 	$where{"o.year=?"}=$filter->{year} if $filter->{year};
 	$where{"o.ordno=?"}=$filter->{ordspec} if $filter->{ordspec};
@@ -782,7 +787,8 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	my $result=query($self,sprintf(qq\
 select 
 o.id as order_id,
-(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 year,
 (select v1 from sdata where r='код структурного подразделения' and v2=o.sp::text order by id limit 1)||year-2000||substr(o.ordno,3,6)||'000000' as ordno,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status,
@@ -818,6 +824,7 @@ or p.id in (select refid from log where refto='packets' and who::text in (select
 
 	$where{"p.id = ?"}=$filter->{packet_id} if $filter->{packet_id};
 	$where{"o.id = ?"}=$filter->{ordspec} if $filter->{ordspec};
+	$where{"o.org = ?"}=$filter->{org} if $filter->{org};
 	$where{"o.sp = ?"}=$filter->{sp} if $filter->{sp};
 	$where{qq\(o.id in (select refid from log where refto='orders' and  who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?)))
 or p.id in (select refid from log where refto='packets' and who::text in (select v2 from sdata where r in ('ФИО сотрудника','наименование структурного подразделения') and lower(v1)~lower(?))))
@@ -833,9 +840,10 @@ or p.id in (select refid from log where refto='packets' and who::text in (select
 select
 s.*, event as status, to_char(date,'yyyy-mm-dd hh24:mi') status_date, l.id as status_event,
 (select name from files where id=s.container) as container_name,
-(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=s.sp::text) as spname
+sname_of(s.org::text) as orgname,
+sname_of(s.sp::text) as spname
 from (
-select p.id as packet_id, o.sp, type, container
+select p.id as packet_id, o.org, o.sp, type, container
 from packets p
 left join orders o on o.id=p.order_id
 where 
@@ -1489,7 +1497,8 @@ sub read_order_info
 {
 	my ($self,$order_id)=@_;
 	return db::selectrow_hashref(qq/select o.id as order_id,*,
-(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status
 from orders o join objects j on j.id=o.object_id where o.id=?/,undef,$order_id);
