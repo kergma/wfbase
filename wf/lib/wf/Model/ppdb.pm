@@ -1318,21 +1318,22 @@ sub orders_being_processed
 	my $filter=shift;
 	
 	my $inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and l.closed is null
 and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where refto=l.refto and refid=l.refid and id>l.id)))
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \;
 
 	my @a;
 	my $r;
 	$r=db::selectall_arrayref(qq/
-select o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+select o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, org,sp,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
@@ -1370,62 +1371,63 @@ sub orders_being_conducted
 	my $filter=shift;
 
 	my $inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and l.closed is null
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 union
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where l.who=?
 and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \;
 
 	$inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
 and l.closed is null
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 union
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where o.sp=?
 and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \ if $filter ne $operator;
 
 	$inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
 and l.closed is null
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 union
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join orders o on o.id=l.refid and l.refto='orders'
 where o.sp in (select distinct v2::uuid from data where r='принадлежит структурному подразделению' and v1=?)
 and l.closed is null
 and not exists (select 1 from packets where order_id=o.id)
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \ unless $filter;
 
 	my @a;
 	my $r;
 	$r=db::selectall_arrayref(qq/
-select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, org, sp,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
@@ -1579,7 +1581,7 @@ sub orders_being_dispatched
 
 
 	my $inner=qq\
-select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
+select distinct o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
 from packets p
 left join orders o on o.id=p.order_id
 where
@@ -1591,7 +1593,7 @@ or o.id in (select refid from log where closed is null and refto='orders' and wh
 or p.id in (select refid from log where closed is null and refto='packets' and who::text in (select item from items where souid='$operator' and (sp_name is not null or item=souid)))
 )
 union
-select distinct o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
+select distinct o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(id) from log where closed is null and refid in (o.id,p.id)) as event_id
 from packets p
 join orders o on o.id=p.order_id
 where
@@ -1602,30 +1604,31 @@ and exists ( select 1 from log l join data d on d.r='наименование с
 	my $coworkers=get_coworkers_list($self,$operator);
 
 	$inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from orders o
 join log l on l.refto='orders' and l.refid=o.id
 where o.sp=?
 and l.closed is null
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \ if $filter ne $operator;
 
 	$inner=qq\
-select o.id,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
+select o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,max(l.id) as event_id
 from log l
 join packets p on p.id=l.refid and l.refto='packets'
 left join orders o on (o.id=l.refid and l.refto='orders') or o.id=p.order_id
 where l.who=?
 and l.closed is null
 and (l.event='принят' or (l.event='назначен' and not exists (select 1 from log where closed is null and refto=l.refto and refid=l.refid and id>l.id)))
-group by o.id,o.sp,o.ordno,o.year,o.objno,o.object_id
+group by o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id
 \ if $filter ne $operator and grep {(keys %$_)[0] eq $filter} @$coworkers;
 
 	my @a;
 	my $r;
 	$r=db::selectall_arrayref(qq/
-select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, sp,
-(select shortest(v1) from data where r='наименование структурного подразделения' and v2=o.sp::text) as spname,
+select 'accepted' as rtype, o.id as order_id,o.ordno, o.objno,o.year,j.id as object_id, j.address, org,sp,
+sname_of(o.org::text) as orgname,
+sname_of(o.sp::text) as spname,
 (select v1 from data where r='код структурного подразделения' and v2=o.sp::text) as spcode
 from (
 $inner
