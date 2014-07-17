@@ -64,7 +64,16 @@ sub array_ref
 		$q=shift @values;
 	};
 
-	my $sth=db::prepare($q);
+	my $sth;
+	if ($opts->{use_safe_connection})
+	{
+		my $sdbh=$self->sconnect() or return undef;
+		$sth=$sdbh->prepare($q);
+	}
+	else
+	{
+		$sth=db::prepare($q);
+	};
 	my $r=$sth->execute(@values);
 	return undef unless $r;
 	my $row=$opts->{row};
