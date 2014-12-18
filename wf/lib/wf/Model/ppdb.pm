@@ -786,9 +786,10 @@ or o.id in (select refid from log where refto='orders' and (who::text in (select
 	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='загружен'"}='novalue' if $filter->{ready} eq 'распределение';
 	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='назначен'"}='novalue' if $filter->{ready} eq 'проверка';
 	$where{"exists (select 1 from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' and l.event='отклонён' and lower(coalesce(l.note,'замечания'))~'замечания' and not exists (select 1 from packets where type=p.type and id>l.id and order_id=p.order_id))"}='novalue' if $filter->{ready} eq 'замечания';
-	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and coalesce((select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type in ('техплан','межевой') order by l.id desc limit 1),'')<>'принят'"}='novalue' if $filter->{ready} eq 'обработка';
+	$where{"(select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and coalesce((select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type in ('техплан','межевой','обследование') order by l.id desc limit 1),'')<>'принят'"}='novalue' if $filter->{ready} eq 'обработка';
 	$where{"(select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)='принят'"}='novalue' if $filter->{ready} eq 'техплан';
 	$where{"(select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='межевой' order by l.id desc limit 1)='принят'"}='novalue' if $filter->{ready} eq 'межевой';
+	$where{"(select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='обследование' order by l.id desc limit 1)='принят'"}='novalue' if $filter->{ready} eq 'обследование';
 
 	$limit+0 or undef $limit;
 	$limit and $limit="limit $limit";
@@ -801,7 +802,7 @@ sname_of(o.sp::text) as spname,
 year,
 (select v1 from sdata where r='код структурного подразделения' and v2=o.sp::text order by id limit 1)||year-2000||substr(o.ordno,3,6)||'000000' as ordno,
 (select event from log where refto='orders' and refid=o.id order by id desc limit 1) as status,
-(case when not exists (select 1 from packets where order_id=o.id) then 'нет данных' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='загружен' then 'распределение' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='назначен' then 'проверка' when exists (select 1 from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' and l.event='отклонён' and lower(coalesce(l.note,'замечания'))~'замечания' and not exists (select 1 from packets where type=p.type and id>l.id and order_id=p.order_id)) then 'замечания' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and coalesce((select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type in ('техплан','межевой') order by l.id desc limit 1),'')<>'принят' then 'обработка' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)='принят' then 'техплан' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='межевой' order by l.id desc limit 1)='принят' then 'межевой' else null end) as ready,
+(case when not exists (select 1 from packets where order_id=o.id) then 'нет данных' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='загружен' then 'распределение' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='назначен' then 'проверка' when exists (select 1 from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' and l.event='отклонён' and lower(coalesce(l.note,'замечания'))~'замечания' and not exists (select 1 from packets where type=p.type and id>l.id and order_id=p.order_id)) then 'замечания' when (select event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='данные' order by l.id desc limit 1)='принят' and coalesce((select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type in ('техплан','межевой','обследование') order by l.id desc limit 1),'')<>'принят' then 'обработка' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='техплан' order by l.id desc limit 1)='принят' then 'техплан' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='межевой' order by l.id desc limit 1)='принят' then 'межевой' when (select l.event from packets p join log l on l.refto='packets' and l.refid=p.id where p.order_id=o.id and p.type='обследование' order by l.id desc limit 1)='принят' then 'обследование' else null end) as ready,
 (select coalesce((select (latest(d.*)).v1 from sdata d where r='ФИО сотрудника' and v2=l.who::text),(select shortest(v1) from sdata where r='наименование структурного подразделения' and v2=l.who::text),who::text) from log l join packets p on l.refid in (p.id, o.id) where p.order_id=o.id and l.who is not null order by l.id desc limit 1) as who,
 (select to_char(date,'yyyy-mm-dd hh24:mi:ss') from log l join packets p on l.refid in (p.id, o.id) where p.order_id=o.id order by l.id desc limit 1) as touched,
 (select address from objects where id=o.object_id) as address
@@ -1359,7 +1360,7 @@ join objects j on j.id=o.object_id
 		return $r if $r->{error};
 		my $p=$o->{packets}[0];
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'назначен' and ($filter ne $operator or $p->{status}->{who} eq $operator);
-		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой/ and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой|обследование/ and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
@@ -1455,7 +1456,7 @@ join objects j on j.id=o.object_id
 		$o->{group}='к принятию' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
-		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой/ and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой|обследование/ and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.closed is null and l.refto='packets' and l.refid=p.id where who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
@@ -1594,7 +1595,7 @@ select distinct o.id,o.org,o.sp,o.ordno,o.year,o.objno,o.object_id,(select max(i
 from packets p
 left join orders o on o.id=p.order_id
 where
-p.type in( 'данные','техплан','межевой')
+p.type in( 'данные','техплан','межевой','обследование')
 and exists (select 1 from log l where closed is null and refto='packets' and refid=p.id and event='загружен' and lower(coalesce(note,'')) !~ 'на подпись' and not exists (select 1 from log where closed is null and refto=l.refto and refid=l.refid and id>l.id))
 and (
 o.sp::text in (select item from items where souid=? and sp_name is not null)
@@ -1653,10 +1654,10 @@ join objects j on j.id=o.object_id
 		my $r=order_data($self,$o);
 		return $r if $r->{error};
 		my $p=$o->{packets}[0];
-		$o->{group}='к принятию' if $p->{type} =~ /техплан|межевой/ and $p->{status}->{event} eq 'загружен';
+		$o->{group}='к принятию' if $p->{type} =~ /техплан|межевой|обследование/ and $p->{status}->{event} eq 'загружен';
 		$o->{group}='замечания' if $p->{type} eq 'данные' and $p->{status}->{event} eq 'отклонён';
 		$o->{group}='к принятию' if $p->{type} eq 'данные' and $p->{status}->{event} =~ /назначен|загружен/ and $p->{status}->{note} =~ /на подпись/;
-		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой/ and $p->{status}->{event} eq 'принят';
+		$o->{group}='к получению' if $p->{type} =~ /техплан|межевой|обследование/ and $p->{status}->{event} eq 'принят';
 		$o->{group}='к закрытию' if $o->{group} eq 'к получению' and (db::selectval_scalar("select 1 from data where r='принадлежит структурному подразделению' and v1=? and v2=?",undef,$p->{status}->{who},$o->{sp}) or db::selectval_scalar("select who from packets p join log l on l.refto='packets' and l.refid=p.id where l.closed is null and who is not null and p.order_id=? order by l.id limit 1",undef,$o->{order_id}) eq $p->{status}->{who});
 		$o->{group}='к получению' if $p->{type} eq 'сведения' and $p->{status}->{event} eq 'загружен';
 
