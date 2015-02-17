@@ -148,7 +148,7 @@
     [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
-[% IF c.check_user_roles('разработчик') %]
+[% IF result.dump or dump %]
 <pre>
 [% result.dump %]
 [% dump %]
