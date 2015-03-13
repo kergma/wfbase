@@ -234,7 +234,7 @@ join data d on d.r='наименование структурного подра
 group by d.v2
 " if $cc->check_any_user_role('диспетчер','администратор','разработчик');
 	my $r=cached_array_ref($self,qq"
-select v2 as sp, shortest(v1) as spname, 1 as ord from data d where r='наименование структурного подразделения' and v2 in ('a9b7079b-26de-49e3-8d16-9e141d644faf','d86e0ad4-4824-430b-9790-5e78e3a87cae') group by v2
+select v2 as sp, shortest(v1) as spname, 1 as ord from data d where r='наименование структурного подразделения' and v2 in ('a9b7079b-26de-49e3-8d16-9e141d644faf','d86e0ad4-4824-430b-9790-5e78e3a87cae','8c68cbed-d857-467e-8907-85335f95aaf1') group by v2
 $dispatch_option
 order by ord,2
 ");
