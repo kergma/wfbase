@@ -325,7 +325,7 @@ sub connect
 		)),
 		wf->config->{dbusername},
 		wf->config->{dbauth},
-		{InactiveDestroy=>1}
+		{InactiveDestroy=>1,pg_enable_utf8=>0}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;
 	wf::Model::udb::init_schema();

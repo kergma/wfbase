@@ -56,13 +56,13 @@ sub begin :Private
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	$c->stash->{template}='swalker.tt' unless defined $c->{stash}->{template} or -f wf->path_to('root')."/".$c->request->{action}.".tt";
-	$c->{stash}->{stash}=$c->{stash};
+	$c->stash->{template}='swalker.tt' unless defined $c->stash->{template} or -f wf->path_to('root')."/".$c->request->{action}.".tt";
+	$c->stash->{stash}=$c->stash;
 	if ($c->stash->{formbuilder})
 	{
-		$c->{stash}->{FormBuilder}->fieldsubs(1);
-		$c->{stash}->{formbuilder}->{display}={order=>[keys %{$c->{stash}->{FormBuilder}->{tmplvar}}]} unless defined $c->{stash}->{formbuilder}->{display};
-		$c->{stash}->{formbuilder}->{form}=$c->{stash}->{FormBuilder} unless defined $c->{stash}->{formbuilder}->{form};
+		$c->stash->{FormBuilder}->fieldsubs(1);
+		$c->stash->{formbuilder}->{display}={order=>[keys %{$c->stash->{FormBuilder}->{tmplvar}}]} unless defined $c->stash->{formbuilder}->{display};
+		$c->stash->{formbuilder}->{form}=$c->stash->{FormBuilder} unless defined $c->stash->{formbuilder}->{form};
 	};
 	eval {
 		use Data::Dumper;
@@ -70,9 +70,9 @@ sub end : ActionClass('RenderView')
 			my ($hash) = @_;
 			return [grep {!/FormBuilder|^_?form$/} keys %$hash];
 		};
-		undef $Data::Dumper::Sortkeys if defined $c->{stash}->{fulldump} && $c->{stash}->{fulldump};
+		undef $Data::Dumper::Sortkeys if defined $c->stash->{fulldump} && $c->stash->{fulldump};
 
-		$c->{stash}->{dump}=Dumper($c->stash);
+		$c->stash->{dump}=Dumper($c->stash);
 	} if $c->check_any_user_role('Разработчик');
 }
 
