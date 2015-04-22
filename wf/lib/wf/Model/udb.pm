@@ -147,7 +147,7 @@ order by r,refdef
 sub record_of
 {
 	my ($self,$id,$domain)=@_;
-	return db::selectall_arrayref(qq/select * from er.record_of(?,?)/,{Slice=>{}},$id,$domain);
+	return db::selectall_arrayref(qq/select * from er.record_of(?,?) order by value is null, key, name2, name1/,{Slice=>{}},$id,$domain);
 }
 
 sub rectypes
@@ -215,6 +215,11 @@ sub recdef
 	my $r=db::selectrow_arrayref(qq/select defvalue,rectype from recv where recid=?/,undef,$recid);
 	return (undef,undef) unless $r;
 	return @$r;
+}
+sub entity
+{
+	my ($self,$en,$domain)=@_;
+	return db::selectrow_hashref(qq/select * from er.entities(?,null,null,?)/,undef,$en,$domain);
 }
 
 sub update_row
