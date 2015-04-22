@@ -123,6 +123,13 @@ sub search_records
 	$limit and $limit="limit $limit";
 	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),map(@{arrayref $_}, grep {$_ ne 'novalue'} values %where));
 }
+
+sub entities
+{
+	my ($self, $f)=@_;
+	return read_table($self,qq/select * from er.entities(?,?,?,?,?)/,$f->{en},$f->{name},$f->{type},$f->{domain},$f->{limit});
+}
+
 sub read_record
 {
 	my ($self,$id)=@_;
@@ -140,6 +147,16 @@ sub rectypes
 {
 	my ($self)=@_;
 	return cached_array_ref($self,q/select distinct regexp_replace(rectype,'^.*PKI$','Объект PKI') from recv where rectype is not null order by 1/);
+}
+sub types
+{
+	my ($self)=@_;
+	return cached_array_ref($self,q/select distinct type from er.typing where domain=coalesce(null,domain) order by 1/);
+}
+sub domains
+{
+	my ($self)=@_;
+	return cached_array_ref($self,q/select distinct domain from er.keys order by 1/);
 }
 sub islist
 {
