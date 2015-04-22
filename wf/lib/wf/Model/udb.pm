@@ -143,6 +143,13 @@ order by r,refdef
 /,{Slice=>{}},$id,$id,$id,$id);
 
 }
+
+sub record_of
+{
+	my ($self,$id,$domain)=@_;
+	return db::selectall_arrayref(qq/select * from er.record_of(?,?)/,{Slice=>{}},$id,$domain);
+}
+
 sub rectypes
 {
 	my ($self)=@_;
