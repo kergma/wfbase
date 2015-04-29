@@ -203,6 +203,29 @@ order by 2
 \,$isuid);
 }
 
+sub row
+{
+	my ($self,$table, $row)=@_;
+	return db::selectall_arrayref(qq\
+select (r).*, (e).*, (k).* from (
+select r,case when "column" like 'e%' and value is not null then (select er.entities(value::int8) as e) end as e,
+case when "column" ='r' and value is not null then (select k from er.keys k where id=value::int8) end as k
+from er.row(?,?) as r
+) s
+\,{Slice=>{}},$table,$row);
+}
+
+sub row_update
+{
+	my ($self, $old, $new)=@_;
+	my $table=(grep {$_->{column} eq 'table'} @$old)[0]->{value};
+	my $row=(grep {$_->{column} eq 'row'} @$old)[0]->{value};
+	delete $new->{row};
+	undef $_ foreach grep {!$_} values %$new;
+
+	return db::selectall_arrayref(qq/select * from er.chrow(?,?,?,?)/,{Slice=>{}},$table,$row,[keys %$new],[values %$new]);
+}
+
 sub datarow
 {
 	my ($self,$id)=@_;
