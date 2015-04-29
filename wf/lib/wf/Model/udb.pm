@@ -232,6 +232,12 @@ sub datarow
 	return undef unless $id;
 	return db::selectrow_hashref(qq/select * from data where id=?/,undef,$id);
 }
+
+sub storages
+{
+	my ($self,$domain)=@_;
+	return db::selectall_arrayref(qq/select * from er.storages order by ?=any(domains) desc,"table"/,{Slice=>{}},$domain);
+}
 sub recdef
 {
 	my ($self,$recid)=@_;
@@ -357,7 +363,7 @@ for my $funame (qw/do prepare selectrow_arrayref selectrow_hashref selectall_arr
 	*$funame=sub {
 		db::connect() unless $dbh;
 		my $rv=$dbh->$funame(@_);
-		Catalyst::Exception->throw($DBI::errstr) if $DBI::errstr;
+		#Catalyst::Exception->throw($DBI::errstr) if $DBI::errstr;
 		return $rv;
 	};
 }
