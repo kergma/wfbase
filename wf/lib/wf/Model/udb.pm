@@ -340,6 +340,13 @@ sub newid
 	return db::selectval_scalar("select newid()");
 }
 
+sub generate_id()
+{
+	my $self=shift;
+	return db::selectval_scalar("select generate_id()");
+}
+
+
 sub synstatus
 {
 	my $self=shift;

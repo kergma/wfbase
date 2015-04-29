@@ -43,6 +43,7 @@
 		<li><a href="#">Просмотр</a>
 			<ul>
 				<li><a href="/rec/search">Записи</a></li>
+				<li><a href="/rec/ersearch">Записи ER</a></li>
 				<li><a href="/sys/isdata">Данные ИС</a></li>
 			</ul>
 		</li>
@@ -50,6 +51,7 @@
 		<li><a href="#">Создать</a>
 			<ul>
 				<li><a href="/rec/create">Запись</a></li>
+				<li><a href="/rec/ercreate">Запись ER</a></li>
 				<li><a href="/pki/genpkey">Ключ PKI</a></li>
 				<li><a href="/pki/crreq">Запрос сертификата PKI</a></li>
 				<li><a href="/pki/crcert">Сертификат PKI</a></li>
