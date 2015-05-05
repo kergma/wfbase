@@ -94,6 +94,12 @@ sub auto :Private
 		$c->authenticate({uid=>$uid,password=>'***'}) if $uid;
 	};
 
+	if (!$c->user_exists and $c->controller eq $c->controller('ajapi'))
+	{
+		$c->stash->{error}='not authenticated';
+		$c->forward('View::json');
+		return 0;
+	};
 	if (!$c->user_exists)
 	{
 		$c->response->redirect('/auth/login');
