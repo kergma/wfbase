@@ -23,9 +23,10 @@ Catalyst Controller.
 
 sub index :Path :Args
 {
-	my ( $self, $c , @a) = @_;
-
-	$c->stash->{args}=[@a];
+	my ( $self, $c , $f, @a) = @_;
+	my $r;
+	eval {no strict 'refs'; $r=$c->model->$f(@a)};
+	%{$c->stash}=(%{$r//{}});
 	$c->forward('View::json');
 }
 

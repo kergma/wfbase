@@ -248,7 +248,7 @@ sub recdef
 sub entity
 {
 	my ($self,$en,$domain)=@_;
-	return db::selectrow_hashref(qq/select * from er.entities(?,null,null,?)/,undef,$en,$domain);
+	return db::selectrow_hashref(qq/select * from er.entities(coalesce(?,0::int8),null,null,?)/,undef,$en,$domain);
 }
 
 sub update_row
