@@ -290,21 +290,71 @@ left join data def on def.v2=rec.v2 and (def.r like 'наименование %'
 /);
 }
 
-sub cached_array_ref
+sub array_ref
 {
 	my ($self, $q, @values)=@_;
 
+	my $opts={row=>'auto'};
+	if (ref $q eq 'HASH')
+	{
+		%$opts=(%$opts,%$q);
+		$q=shift @values;
+	};
+
+	my $sth;
+	if ($opts->{use_safe_connection})
+	{
+		my $sdbh=$self->sconnect() or return undef;
+		$sth=$sdbh->prepare($q);
+	}
+	else
+	{
+		$sth=db::prepare($q);
+	};
+	my $r=$sth->execute(@values);
+	return undef unless $r;
+	my $row=$opts->{row};
+	$opts->{row}='hashref' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})>1;
+	$opts->{row}='col' if ($opts->{row}//'auto') eq 'auto' and scalar(@{$sth->{NAME}})==1;
+	my @result=();
+	while(my $r=($opts->{row} eq 'hashref'?$sth->fetchrow_hashref:$sth->fetchrow_arrayref))
+	{
+		push @result,$r->[0] if $opts->{row} eq 'col';
+		push @result,$r if $opts->{row} eq 'hashref';
+		push @result,[@$r] if $opts->{row} eq 'arrayref';
+		push @result,[@$r] if $opts->{row} eq 'enhash';
+	}
+	if ($opts->{row} eq 'enhash')
+	{
+		my $r={};
+		$r->{$_->[0]}=$_ foreach @result;
+		return $r;
+	};
+	return \@result;
+}
+
+sub cached_array_ref
+{
+	my ($self, $q, @values)=@_;
+	my $opts={};
+	if (ref $q eq 'HASH')
+	{
+		$opts=$q;
+		$q=shift @values;
+	};
+
 	my $md5=Digest::MD5->new;
+	$md5->add($opts->{cache_key}) if defined $opts->{cache_key};
 	$md5->add($q);
 	$md5->add($_) foreach @values;
 	my $qkey=$md5->hexdigest();
 
 	my $result=$cc->cache->get("aref-".$qkey);
+	undef $result if $opts->{update};
 	unless ($result)
 	{
-		$result=db::selectall_arrayref($q,{Slice=>{}},@values);
-		@$result=map {values %$_} @$result if keys(%{$result->[0]})==1;
-		$cc->cache->set("aref-".$qkey,$result);
+		$result=array_ref(@_);
+		$cc->cache->set("aref-".$qkey,$result) if defined $result;
 	};
 	return $result;
 }
@@ -344,6 +394,12 @@ sub generate_id()
 {
 	my $self=shift;
 	return db::selectval_scalar("select generate_id()");
+}
+
+sub keys()
+{
+	my ($self, $q)=@_;
+	return cached_array_ref($self,{row=>'enhash'},"select * from er.keys");
 }
 
 
