@@ -57,16 +57,12 @@ sub authinfo_password
 	my ($self,$authinfo)=@_;
 
 	my $r=db::selectrow_hashref(qq{
-select pw_ac.v1 as passw
-from data def_is
-join data dcon on dcon.v2=def_is.v2 or (dcon.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1=def_is.v2) and dcon.r like 'наименование%')
-join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (select container from containers_of(fio_so.v2)) or exists (select 1 from data so join data ac on ac.v2=so.v1 and so.r='учётная запись сотрудника' where so.v2=fio_so.v2 and ac.v1=def_is.v2 and ac.r='информационная система учётной записи'))
-join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
-left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
-left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
-where def_is.v2=? and def_is.r='наименование ИС'
-and (lo_ac.v1=? or fio_so.v2=?)
-},undef,$isuid,$authinfo->{username},$authinfo->{uid});
+select d2.v1 as passw
+from data d1
+join data d2 on d2.v2=d1.v2 and d2.r='пароль ct учётной записи'
+join data d3 on d3.v1=d1.v2 and d3.r='учётная запись сотрудника'
+where d1.v1=? or d3.v2=?
+},undef,$authinfo->{username},$authinfo->{uid});
 	$r or return undef;
 	$r->{passw}="***" if $authinfo->{uid} and !$authinfo->{username};
 	return $r->{passw};
@@ -81,21 +77,17 @@ sub authinfo_data
 	my %data=%$authinfo;
 
 	my $r=db::selectrow_hashref(qq/
-
-select fio_so.v2 as souid,comma(distinct fio_so.v1) as fio,
-lo_ac.v1 as username,
-pw_ac.v1 as password, 
-(select comma(distinct v1) from data p join context_of(def_is.v2,fio_so.v2) c on c.item=p.v2 and p.r='свойства сотрудника') as props
-from data def_is 
-join data dcon on dcon.v2=def_is.v2 or (dcon.v2 in (select v2 from data where r='принадлежит структурному подразделению' and v1=def_is.v2) and dcon.r like 'наименование%')
-join data fio_so on fio_so.r='ФИО сотрудника' and (dcon.v2 in (select container from containers_of(fio_so.v2)) or exists (select 1 from data so join data ac on ac.v2=so.v1 and so.r='учётная запись сотрудника' where so.v2=fio_so.v2 and ac.v1=def_is.v2 and ac.r='информационная система учётной записи'))
-join data ac_so on ac_so.r='учётная запись сотрудника' and ac_so.v2=fio_so.v2 and (not exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1) or exists (select 1 from data where r='информационная система учётной записи' and v2=ac_so.v1 and v1=def_is.v2))
-left join data lo_ac on lo_ac.v2=ac_so.v1 and lo_ac.r='имя входа учётной записи'
-left join data pw_ac on pw_ac.v2=ac_so.v1 and pw_ac.r='пароль ct учётной записи'
-where def_is.v2=? and def_is.r='наименование ИС' 
-and (lo_ac.v1=? or fio_so.v2=?)
-group by fio_so.v2,ac_so.v1,def_is.v2, lo_ac.v1, pw_ac.v1
-/,undef,$isuid,$authinfo->{username},$authinfo->{uid});
+select d3.v2 as souid, d5.v1 as fio,
+d1.v1 as username,
+d2.v1 as password,
+d4.v1 as props
+from data d1
+join data d2 on d2.v2=d1.v2 and d2.r='пароль ct учётной записи'
+join data d3 on d3.v1=d1.v2 and d3.r='учётная запись сотрудника'
+join data d4 on d4.v2=d3.v2 and d4.r='свойства сотрудника'
+join data d5 on d5.v2=d3.v2 and d5.r='ФИО сотрудника'
+where (d1.v1=? and d1.r='имя входа учётной записи') or d3.v2=?
+/,undef,$authinfo->{username},$authinfo->{uid});
 	$r->{password}='***' if $authinfo->{uid};
 	%data=(%data,%$r) if $r;
 
