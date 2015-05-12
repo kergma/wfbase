@@ -57,14 +57,15 @@ sub authinfo_password
 	my ($self,$authinfo)=@_;
 
 	my $r=db::selectrow_hashref(qq{
-select d2.v1 as passw
-from data d1
-join data d2 on d2.v2=d1.v2 and d2.r='пароль ct учётной записи'
-join data d3 on d3.v1=d1.v2 and d3.r='учётная запись сотрудника'
-where d1.v1=? or d3.v2=?
+select p.t as passw,a.e2 as soid from systems a
+join systems n on n.r=er.key('имя входа') and n.e1=a.e1
+join systems p on p.r=er.key('пароль ct') and p.e1=a.e1
+where a.r=er.key('учётная запись сотрудника') and (n.t=? or a.e1=?)
 },undef,$authinfo->{username},$authinfo->{uid});
 	$r or return undef;
 	$r->{passw}="***" if $authinfo->{uid} and !$authinfo->{username};
+	$authinfo->{soid}=$r->{soid};
+	$authinfo->{password}=$r->{passw};
 	return $r->{passw};
 }
 
@@ -75,28 +76,14 @@ sub authinfo_data
 	my ($self,$authinfo)=@_;
 
 	my %data=%$authinfo;
-
-	my $r=db::selectrow_hashref(qq/
-select d3.v2 as souid, d5.v1 as fio,
-d1.v1 as username,
-d2.v1 as password,
-d4.v1 as props
-from data d1
-join data d2 on d2.v2=d1.v2 and d2.r='пароль ct учётной записи'
-join data d3 on d3.v1=d1.v2 and d3.r='учётная запись сотрудника'
-join data d4 on d4.v2=d3.v2 and d4.r='свойства сотрудника'
-join data d5 on d5.v2=d3.v2 and d5.r='ФИО сотрудника'
-where (d1.v1=? and d1.r='имя входа учётной записи') or d3.v2=?
-/,undef,$authinfo->{username},$authinfo->{uid});
-	$r->{password}='***' if $authinfo->{uid};
-	%data=(%data,%$r) if $r;
-
-	push @{$data{roles}}, $data{username};
-	push @{$data{roles}}, split /, */, $data{props};
-
-	my $roles="'norole'";
-	$roles="'".join("', '",@{$data{roles}})."'" if $data{roles};
-
+	$data{entity}=$self->entity($authinfo->{soid});
+	$data{full_name}=$data{entity}->{names}->[0];
+	my $r=$self->array_ref(qq/
+select path[array_length(path,1)] as role,a.t role_t from er.tree_from(?,array[er.key('входит в состав полномочия'),-er.key('уполномочен на')]) t
+left join authorities a on a.e1=t.path[array_length(t.path,1)] and a.r=any(er.keys('наименование%','полномочия'))
+/,$authinfo->{soid})
+;
+	$data{roles}=[map {$_->{role},$_->{role_t}} @$r];
 	return \%data;
 }
 

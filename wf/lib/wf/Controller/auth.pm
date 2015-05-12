@@ -39,23 +39,19 @@ sub login :Local :Form
 
 	my $body=$form->render();
 	if ( $form->submitted ) {
-		if ( $form->validate ) {
-			if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
+		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
+		{
+			if ($c->check_any_user_role('вход в udb',2400925544902676608))
 			{
 				$c->response->redirect('/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
 				return;
-				$body.="authentication succeeded in default<br><pre>".Dumper($c);
-			}
-			else
-			{
-				$body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
-			}
+			};
 		}
-		else {
-			$c->stash->{ERROR}          = "INVALID FORM";
-			$c->stash->{invalid_fields} = [ grep { !$_->validate } $form->fields ];
-		}
+		else
+		{
+			$body.="Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+		};
 	};
 	if ($c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
 	{
@@ -64,6 +60,11 @@ sub login :Local :Form
 		my $user;
 		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
 		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
+	};
+	if ($c->user_exists and !$c->check_any_user_role('вход в udb',2400925544902676608))
+	{
+		$body.=sprintf "нет разрешения на вход для сотрудника %s",$c->user->{full_name};
+		$c->logout;
 	};
 
 	$c->response->body($body);
