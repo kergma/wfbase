@@ -381,6 +381,22 @@ sub keys()
 	return cached_array_ref($self,{row=>'enhash'},"select * from er.keys");
 }
 
+sub membership()
+{
+	my ($self, $en)=@_;
+	my $r=$self->cached_array_ref(q/
+with z as (
+select path[2: array_length(path,1)],path[array_length(path,1)] as id,shortest(s.t) as name from er.tree_from(?,er.keys('принадлежит%'),true) t
+left join subjects s on s.e1=t.path[array_length(t.path,1)] and s.r=any(er.keys('наименование%','субъекты'))
+group by path
+)
+select not exists (select 1 from z z2 where path[1: array_length(path,1)-1]=z.path) as leaf, * from z order by array_reverse(path)
+/,$en);
+	my $i={map {$_->{path}->[-1]=>$_->{name}} @$r};
+	@$r=map {@{$_->{path}}=reverse @{$_->{path}};$_->{name}=$i->{$_->{path}->[-1]};$_->{names}=[map {$i->{$_}} @{$_->{path}}];$_} grep {$_->{leaf}} @$r;
+	return {list=>$r};
+}
+
 
 sub synstatus
 {
