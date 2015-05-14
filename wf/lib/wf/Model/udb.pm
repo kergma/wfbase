@@ -408,6 +408,24 @@ order by path
 	return {list=>$r};
 }
 
+sub contact_info()
+{
+	my ($self, $en)=@_;
+	return $self->cached_array_ref(q/
+with m as (
+select path[2: array_length(path,1)],path[array_length(path,1)] as id,shortest(s.t) as name from er.tree_from(?,er.keys('принадлежит%'),true) t
+left join subjects s on s.e1=t.path[array_length(t.path,1)] and s.r=any(er.keys('наименование%','субъекты'))
+group by path
+)
+select (array_agg_uniq(key))[1] as k, t, array_agg_uniq(m.id) as subjects, array_agg_uniq(m.name) as names
+from m
+join subjects p on p.r in (er.key('телефон'), er.key('email')) and p.e1=m.id
+join er.keys k on k.id=p.r
+group by t
+order by max(m.path)
+/,$en);
+}
+
 
 sub synstatus
 {
