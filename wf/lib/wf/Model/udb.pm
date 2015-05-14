@@ -397,6 +397,17 @@ select not exists (select 1 from z z2 where path[1: array_length(path,1)-1]=z.pa
 	return {list=>$r};
 }
 
+sub authorization()
+{
+	my ($self, $en)=@_;
+	my $r=$self->cached_array_ref(q/
+select path[2: array_length(path,1)] as path,a.t as name from er.tree_from(?,array[er.key('входит в состав полномочия'),-er.key('уполномочен на')]) t
+left join authorities a on a.e1=t.path[array_length(t.path,1)] and a.r=any(er.keys('наименование%','полномочия'))
+order by path
+/,$en);
+	return {list=>$r};
+}
+
 
 sub synstatus
 {
