@@ -13,17 +13,22 @@
 
 </head>
 <body>
-
 <script>
 $(function()
 {
-	var m=$('#menu-bar');
+	var m=$('#menu-bar'),s=$('#menu-start'),h=m.css("height");
 	$(window).scroll(function()
 	{
-		if ($(window).scrollTop()>10)
+		if ($(window).scrollTop()>s.offset().top)
+		{
 			m.css("position","fixed").css("top","0px").css("width","100%");
+			s.css("height",h);
+		}
 		else
+		{
 			m.css("position","").css("top","").css("width","");
+			s.css("height","");
+		};
 	});
 });
 </script>
@@ -32,6 +37,7 @@ $(function()
 	<div style="text-align:right;color:lightgray">[% version %]</div>
 </div>
 [% END %]
+<div id="menu-start"></div>
 <div id="menu-bar"><!-- main-menu -->
 	<div id="auth">
 		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
