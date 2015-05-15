@@ -30,6 +30,10 @@ $(function()
 			s.css("height","");
 		};
 	});
+	$('#main-menu').click(function(e)
+	{
+		if (e.target==this) window.scrollTo(0,s.offset().top);
+	});
 });
 </script>
 [% IF c.check_any_user_role('Разработчик') %]
