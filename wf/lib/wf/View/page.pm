@@ -1,4 +1,4 @@
-package wf::View::html;
+package wf::View::page;
 use Moose;
 use namespace::autoclean;
 
@@ -8,14 +8,14 @@ __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
 	render_die => 1,
 	INCLUDE_PATH => [wf->path_to('root')],
-	WRAPPER => 'wrapper.tt',
+	WRAPPER => 'page.tt',
 	EVAL_PERL=>1,
 	RECURSION=>1,
 );
 
 =head1 NAME
 
-wf::View::html - TT View for wf
+wf::View::page - TT View for wf
 
 =head1 DESCRIPTION
 
