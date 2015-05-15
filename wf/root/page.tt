@@ -11,30 +11,28 @@
 
 <link rel="stylesheet" href="/css/common.css" />
 
-<!--[if IE]>
-
-<style type="text/css" media="screen">
-	#menu{float:none;} /* This is required for IE to avoid positioning bug when placing content first in source. */
-	/* IE Menu CSS */
-	/* csshover.htc file version: V1.21.041022 - Available for download from: http://www.xs4all.nl/~peterned/csshover.html */
-	body{behavior:url(/css/csshover3a.htc);
-	font-size:100%; /* to enable text resizing in IE */
-	}
-	#menu ul li{float:left;width:100%;}
-	#menu ul ul {top:100%;left:0;}
-</style>
-<![endif]-->
-
 </head>
 <body>
 
+<script>
+$(function()
+{
+	var m=$('#menu-bar');
+	$(window).scroll(function()
+	{
+		if ($(window).scrollTop()>10)
+			m.css("position","fixed").css("top","0px").css("width","100%");
+		else
+			m.css("position","").css("top","").css("width","");
+	});
+});
+</script>
 [% IF c.check_any_user_role('Разработчик') %]
 <div style="text-align: right; width: 100%">
 	<div style="text-align:right;color:lightgray">[% version %]</div>
 </div>
 [% END %]
-
-<div><!-- main-menu -->
+<div id="menu-bar"><!-- main-menu -->
 	<div id="auth">
 		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
 		<div id="logout"><a href="/auth/logout">выход</a></div>
