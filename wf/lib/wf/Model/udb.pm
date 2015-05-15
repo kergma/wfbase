@@ -386,7 +386,7 @@ sub membership()
 	my ($self, $en)=@_;
 	my $r=$self->cached_array_ref(q/
 with z as (
-select path[2: array_length(path,1)],path[array_length(path,1)] as id,shortest(s.t) as name from er.tree_from(?,er.keys('принадлежит%'),true) t
+select path[2: array_length(path,1)],path[array_length(path,1)] as id,shortest(s.t) as name from er.tree_from(?,er.keys('принадлежит%'),true,null,1) t
 left join subjects s on s.e1=t.path[array_length(t.path,1)] and s.r=any(er.keys('наименование%','субъекты'))
 group by path
 )
@@ -401,7 +401,7 @@ sub authorization()
 {
 	my ($self, $en)=@_;
 	my $r=$self->cached_array_ref(q/
-select path[2: array_length(path,1)] as path,a.t as name from er.tree_from(?,array[er.key('входит в состав полномочия'),-er.key('уполномочен на')]) t
+select path[2: array_length(path,1)] as path,a.t as name from er.tree_from(?,array[er.key('входит в состав полномочия'),-er.key('уполномочен на')],null,null,1) t
 left join authorities a on a.e1=t.path[array_length(t.path,1)] and a.r=any(er.keys('наименование%','полномочия'))
 order by path
 /,$en);
@@ -424,6 +424,18 @@ join er.keys k on k.id=p.r
 group by t
 order by max(m.path)
 /,$en);
+}
+
+sub content()
+{
+	my ($self, $en)=@_;
+	my $r=$self->cached_array_ref(q/
+select path[2: array_length(path,1)] as path,shortest(s.t) as name from er.tree_from(?,er.keys('принадлежит%'),null,1,1) t
+left join subjects s on s.e1=t.path[array_length(t.path,1)] and s.r=any(er.keys('наименование%','субъекты')||er.keys('полное имя%'))
+group by path
+order by path
+/,$en);
+	return {list=>$r};
 }
 
 
