@@ -32,7 +32,15 @@ $(function()
 	});
 	$('#main-menu').click(function(e)
 	{
-		if (e.target==this) window.scrollTo(0,s.offset().top);
+		if (e.target==this)
+		{
+			if ($(window).scrollTop()>s.offset().top)
+				window.scrollTo(0,s.offset().top);
+			else
+				$('#content-stop')[0].scrollIntoView(false);
+				
+
+		};
 	});
 });
 </script>
@@ -85,6 +93,7 @@ $(function()
     [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
     [%# This is where TT will stick all of your template's contents. -%]
     [% content %]
+<div id="content-stop"></div>
 [% IF c.check_user_roles('Разработчик') %]
 <pre>
 [% result.dump %]
