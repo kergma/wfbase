@@ -90,9 +90,7 @@ $(function()
 </div>
 
 <div id="content">
-    [% IF error_msg %]<span class="error">[% error_msg %]</span>[% END %]
-    [%# This is where TT will stick all of your template's contents. -%]
-    [% content %]
+[%+ content +%]
 <div id="content-stop"></div>
 [% IF c.check_user_roles('Разработчик') %]
 <pre>

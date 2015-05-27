@@ -11,6 +11,8 @@ __PACKAGE__->config(
 	WRAPPER => 'page.tt',
 	EVAL_PERL=>1,
 	RECURSION=>1,
+	POST_CHOMP=>1,
+	TRIM=>1,
 );
 
 =head1 NAME
