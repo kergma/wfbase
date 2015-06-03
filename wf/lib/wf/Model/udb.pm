@@ -128,6 +128,51 @@ sub record_of
 	my ($self,$id,$domain)=@_;
 	return db::selectall_arrayref(qq/select * from er.record_of(?,?) order by value is null, key, name2, name1/,{Slice=>{}},$id,$domain);
 }
+sub record_of_requested
+{
+	my ($self,$id,$domain)=@_;
+	return db::selectall_arrayref(qq/
+with i as (
+	select ?::int8 as id
+),
+r as (
+	select (r).* from (select er.record_of(id) as r from i) s
+),
+c as (
+	select c.* from changes c join r on r.table=c.table and r.row=c.row where not exists (select 1 from changes where "table"=c.table and "row"=c.row and request>c.request)
+	union
+	select c.* from changes c,i where (('e1',null,id)::er.row=any(data) or ('e2',null,id)::er.row=any(data))
+),
+x as (
+	select
+	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e1'),-1)) e) as e1,
+	(select k from er.keys k where id=(select (u).value::int8 from unnest((c).data) as u where (u).column='r')) as r,
+	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e2'),-1)) e) as e2,
+	(select (u).value from unnest((c).data) as u where (u).column='t') as value,
+	c
+	from c
+),
+cx as (
+	select (c).*,
+	(e1).en as e1, (e1).names[1] as name1,
+	(r).id as r, (r).key, (r).domain,
+	(e2).en as e2, (e2).names[1] as name2,
+	value
+	from x
+)
+select r.*,
+data::text[],action,request,requester,resolve,resolver,resolution,note,
+cx.e1 as c_e1, cx.name1 as c_name, cx.r as c_r, cx.key as c_key, cx.domain as c_domain, cx.e2 as c_e2, cx.name2 as c_name2, cx.value as c_value
+from r full join cx on cx.table=r.table and cx.row=r.row
+order by r.value is null, r.key, r.name2, r.name1
+/,{Slice=>{}},$id);
+;
+}
+sub test
+{
+	my ($self,$id,$domain)=@_;
+	return db::selectall_arrayref(qq/select data from changes/);
+}
 
 sub rectypes
 {
