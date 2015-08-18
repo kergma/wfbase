@@ -74,6 +74,11 @@ sub end : ActionClass('RenderView')
 
 		$c->stash->{dump}=Dumper($c->stash);
 	} if $c->check_any_user_role('Разработчик');
+	if (defined $c->stash->{no_wrapper} && $c->stash->{no_wrapper})
+	{
+		delete $c->stash->{dump};
+		$c->forward($c->view('ttnw'));
+	};
 }
 
 sub auto :Private

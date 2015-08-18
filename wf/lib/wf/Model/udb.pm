@@ -103,6 +103,14 @@ sub search_records
 	return read_table($self,sprintf(qq/select * from recv where %s order by 2 $limit/,join(" and ",keys %where)),map(@{arrayref $_}, grep {$_ ne 'novalue'} values %where));
 }
 
+sub timestame_of_id
+{
+	my ($self,$id,$format)=@_;
+	$format//='%Y-%m-%d %H:%M:%S';
+	my $t=str2time(db::selectval_scalar('select timestame_of_id(?)',undef,$id));
+	return time2str($t,$format);
+}
+
 sub entities
 {
 	my ($self, $f)=@_;
