@@ -153,9 +153,9 @@ c as (
 ),
 x as (
 	select
-	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e1'),-1)) e) as e1,
+	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e1' and isid((u).value)),-1)) e) as e1,
 	(select k from er.keys k where id=(select (u).value::int8 from unnest((c).data) as u where (u).column='r')) as r,
-	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e2'),-1)) e) as e2,
+	(select e from er.entities(coalesce((select (u).value::int8 from unnest((c).data) as u where (u).column='e2' and isid((u).value)),-1)) e) as e2,
 	(select (u).value from unnest((c).data) as u where (u).column='t') as value,
 	c
 	from c
@@ -169,12 +169,22 @@ cx as (
 	from x
 )
 select r.*,
-data::text[],action,request,requester,resolve,resolver,resolution,note,
-cx.e1 as c_e1, cx.name1 as c_name, cx.r as c_r, cx.key as c_key, cx.domain as c_domain, cx.e2 as c_e2, cx.name2 as c_name2, cx.value as c_value
+(select nullif(array_agg_md(array[array[d.column,d.type, d.value]]),'{}') from unnest(data) d) as data,
+action,request,requester,resolve,resolver,resolution,note,
+coalesce(cx.e1::text,(select (u).value from unnest(data) as u where (u).column='e1')) as c_e1, cx.name1 as c_name, cx.r as c_r, cx.key as c_key, cx.domain as c_domain, coalesce(cx.e2::text,(select (u).value from unnest(data) as u where (u).column='e2')) as c_e2, cx.name2 as c_name2, cx.value as c_value
 from r full join cx on cx.table=r.table and cx.row=r.row
 order by r.value is null, r.key, r.name2, r.name1
 /,{Slice=>{}},$id);
 ;
+}
+sub request_update
+{
+	my ($self,$r,$value)=@_;
+	my $d;
+	$d=['t',undef,$value] if $r->{r}~~[2400924095923474560,2400924095940272256,2400924095940276352];
+	$d=[['e1',undef,$cc->user->{entity}->{en}],['r',undef,$r->{r}],['e2',undef,$value]] if $r->{r}~~[2400924095923462272,2401518747775791232];
+	db::do('delete from changes where "table"=? and "row"=? and request=?',undef,$r->{table},$r->{row},$r->{request});
+	my $r=db::selectall_arrayref(q/insert into changes ("table","row",action,request,requester,data) select ?::text,?::int,'update',coalesce(?::int8,generate_id()),?::int8,array_agg((e[1],e[2],e[3])::er.row) from unnest_md(?::text[][]) as e returning */,{Slice=>{}},$r->{table},$r->{row},$r->{request},$cc->user->{entity}->{en},$d);
 }
 sub test
 {
