@@ -1,4 +1,4 @@
-package wf;
+package wfbase;
 use Moose;
 use namespace::autoclean;
 
@@ -30,7 +30,10 @@ use Catalyst qw/
 extends 'Catalyst';
 
 our $base=__PACKAGE__->path_to('');
-our $VERSION = "0.".`svnversion -n $base`;
+
+my $gitlog=`git log -1 --date=short`;
+our ($commit,$date)=($1,$2) if $gitlog =~ /commit (.{7}).*Date:\s+(.{10})/ms;
+our $VERSION = "3";
 
 # Configure the application.
 #
@@ -42,7 +45,6 @@ our $VERSION = "0.".`svnversion -n $base`;
 # local deployment.
 
 __PACKAGE__->config(
-	name => 'wf',
 	# Disable deprecated behavior needed by old applications
 	disable_component_resolution_regex_fallback => 1,
 	enable_catalyst_header => 1, # Send X-Catalyst header
@@ -89,7 +91,7 @@ __PACKAGE__->config->{"Plugin::Session"} =
 };
 
 # Start the application
-__PACKAGE__->setup();
+#__PACKAGE__->setup();
 
 
 =head1 NAME
