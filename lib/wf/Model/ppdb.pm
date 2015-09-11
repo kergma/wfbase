@@ -11,6 +11,7 @@ use Digest::MD5;
 use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
 no warnings 'uninitialized';
+use utf8;
 
 
 

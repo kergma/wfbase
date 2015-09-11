@@ -1,6 +1,7 @@
 package wf::Model::udb;
 use Moose;
 use namespace::autoclean;
+use utf8;
 
 extends 'Catalyst::Model';
 
@@ -461,7 +462,7 @@ sub connect
 		)),
 		wf->config->{dbusername},
 		wf->config->{dbauth},
-		{InactiveDestroy=>1,pg_enable_utf8=>0}
+		{InactiveDestroy=>1}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;
 }

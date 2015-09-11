@@ -1,6 +1,7 @@
 package wf::Controller::auth;
 use Moose;
 use namespace::autoclean;
+use utf8;
 
 BEGIN {extends 'Catalyst::Controller::FormBuilder'; }
 
