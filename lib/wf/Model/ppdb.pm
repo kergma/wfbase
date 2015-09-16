@@ -6,7 +6,6 @@ no warnings 'uninitialized';
 use parent 'Catalyst::Model';
 use DBI;
 use Date::Format;
-use Encode;
 use Digest::MD5;
 use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
@@ -106,8 +105,9 @@ sub cached_array_ref
 
 	my $md5=Digest::MD5->new;
 	$md5->add($opts->{cache_key}) if defined $opts->{cache_key};
-	$md5->add($q);
-	$md5->add($_) foreach @values;
+	use Encode qw(encode_utf8);
+	$md5->add(encode_utf8($q));
+	$md5->add(encode_utf8($_)) foreach @values;
 	my $qkey=$md5->hexdigest();
 
 	my $result=$cc->cache->get("aref-".$qkey);
@@ -164,10 +164,10 @@ sub query
 			my @rows;
 			while (my $r=$sth->fetchrow_hashref)
 			{
-				push @rows, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+				push @rows, {map {$_ => $r->{$_}} keys %$r};;
 			}; 
 
-			$result={ARRAY=>\@rows,header=>[map(encode("utf8",$_),@{$sth->{NAME}})],error=>$@?$@:$sdbh->errstr};
+			$result={ARRAY=>\@rows,header=>[@{$sth->{NAME}}],error=>$@?$@:$sdbh->errstr};
 		};
 		$result={%$result,(query=>$query,error=>$@?$@:$sdbh->errstr)};
 		$sth->finish();
@@ -209,8 +209,9 @@ sub defer
 
 	my $md5=Digest::MD5->new;
 	$md5->add($proc);
-	$md5->add($_,$params->{$_}) foreach sort keys %$params;
-	$md5->add($_) foreach @values;
+	use Encode qw(encode_utf8);
+	$md5->add($_,encode_utf8($params->{$_})) foreach sort keys %$params;
+	$md5->add(encode_utf8($_)) foreach @values;
 	my $rkey=$md5->hexdigest();
 
 	my $running=$cache->get("rkey-$rkey");
