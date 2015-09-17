@@ -52,6 +52,11 @@ __PACKAGE__->config(
 	default_model => 'udb'
 );
 
+__PACKAGE__->config(
+	'Plugin::ConfigLoader' => { file => 'wf.conf'}
+);
+
+
 __PACKAGE__->config->{'Plugin::Authentication'} =
 {
 	use_session => 1,

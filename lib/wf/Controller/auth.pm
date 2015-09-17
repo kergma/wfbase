@@ -42,7 +42,7 @@ sub login :Local :Form
 	if ( $form->submitted ) {
 		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
 		{
-			if ($c->check_any_user_role('вход в udb',2400925544902676608))
+			if ($c->check_any_user_role(wf->config->{login_role},2400925544902676608))
 			{
 				$c->response->redirect('/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
