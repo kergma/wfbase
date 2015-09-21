@@ -86,7 +86,7 @@ sub auto :Private
 {
 	my ($self, $c) = @_;
 	srand();
-	$c->stash->{version}=$wf::VERSION;
+	$c->stash->{version}=$wfbase::VERSION;
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;

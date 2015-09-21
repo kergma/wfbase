@@ -29,12 +29,25 @@ use Catalyst qw/
 
 extends 'Catalyst';
 
-our $base=__PACKAGE__->path_to('');
+our $home=Catalyst::Utils::home('wf');
+our $base=Catalyst::Utils::home('wfbase');
 
-my $gitlog=`git log -1 --date=short`;
-our ($commit,$date)=($1,$2) if $gitlog =~ /commit (.{7}).*Date:\s+(.{10})/ms;
-our $VERSION = "3";
+our $VERSION=[];
+use Cwd;
+my $wd=cwd();
+foreach my $d ($home, $base)
+{
+	chdir $d;
+	use Encode 'decode_utf8';
+	my $gitlog=decode_utf8(`git log -1 --date=short`);
+	my $v={};
+	($v->{commit},$v->{date},$v->{msg})=($1,$2,$3) if $gitlog =~ /commit (.{7}).*Date:\s+(.{10}).*[\r\n]\s*(.*?)[\r\n]/ms;
+	push @$VERSION,$v;
+};
+chdir $wd;
 
+push @$VERSION, {commit=>[sort {$b->{date} cmp $a->{date}} @$VERSION]->[0]->{date}};
+unshift @$VERSION, {commit=>'3'};
 # Configure the application.
 #
 # Note that settings in wf.conf (or other external
@@ -49,13 +62,19 @@ __PACKAGE__->config(
 	disable_component_resolution_regex_fallback => 1,
 	enable_catalyst_header => 1, # Send X-Catalyst header
 	default_view => 'page',
-	default_model => 'udb'
+	default_model => 'udb',
+	base_home => $base,
+	home => $home,
+	root => "$home/root",
 );
 
 __PACKAGE__->config(
 	'Plugin::ConfigLoader' => { file => 'wf.conf'}
 );
 
+__PACKAGE__->config(
+	'Plugin::Static::Simple' => { include_path => ["$base/root","$home/root"] },
+);
 
 __PACKAGE__->config->{'Plugin::Authentication'} =
 {
