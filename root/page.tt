@@ -50,14 +50,24 @@ $(function()
 </div>
 <div id="menu-start"></div>
 <div style="z-index:1010" id="menu-bar"><!-- main-menu -->
-	<div id="auth">
-		<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
-		<div id="logout"><a href="/auth/logout">выход</a></div>
-	</div>
-	<ul id="main-menu">
-	</ul>
+<div id="auth">
+<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
+<div id="logout"><a href="/auth/logout">выход</a></div>
+</div>
+<ul id="main-menu">
+[%FOREACH i1 IN c.model.mm()%]
+<li><a href="[%i1.a || '#'%]">[%i1.t%]</a>
+[%IF i1.i.size%]
+<ul>
+[%FOREACH i2 IN i1.i%]
+<li><a href="[%i2.a || '#'%]">[%i2.t%]</a></li>
+[%END%]
+</ul>
+[%END%][%# i1.i.size %]
+</li>
+[%END%][%#mm%]
+</ul>
 </div> <!-- end menu -->
-
 <div id="header">
     [%# Insert the page title -%]
     <!--<h1>[% template.title or site.title %]</h1>-->
