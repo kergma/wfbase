@@ -42,7 +42,7 @@ sub login :Local :Form
 	if ( $form->submitted ) {
 		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
 		{
-			if ($c->check_any_user_role(wf->config->{login_role},2400925544902676608))
+			if ($c->check_any_user_role(wf->config->{login_role}))
 			{
 				$c->response->redirect('/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
@@ -62,7 +62,7 @@ sub login :Local :Form
 		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
 		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
 	};
-	if ($c->user_exists and !$c->check_any_user_role('вход в udb',2400925544902676608))
+	if ($c->user_exists and !$c->check_any_user_role(wf->config->{login_role}))
 	{
 		$body.=sprintf "нет разрешения на вход для сотрудника %s",$c->user->{full_name};
 		$c->logout;

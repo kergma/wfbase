@@ -90,7 +90,7 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 			},
 			store =>
 			{
-				class => 'udb'
+				class => 'dbcon'
 			}
 
 		}

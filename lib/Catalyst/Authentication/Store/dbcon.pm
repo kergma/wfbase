@@ -1,4 +1,4 @@
-package Catalyst::Authentication::Store::udb;
+package Catalyst::Authentication::Store::dbcon;
 
 use strict;
 use warnings;
@@ -34,7 +34,7 @@ sub find_user
 {
 	my ( $self, $authinfo, $c ) = @_;
 
-	my $model=$c->model('udb');
+	my $model=$c->model('dbcon');
 
 	my $p=$model->authinfo_password($authinfo) or return undef;
 
