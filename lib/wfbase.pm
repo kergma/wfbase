@@ -67,9 +67,9 @@ __PACKAGE__->config(
 	root => "$home/root",
 );
 
-__PACKAGE__->config(
-	'Plugin::ConfigLoader' => { file => 'wf.conf'}
-);
+__PACKAGE__->config->{'Plugin::ConfigLoader'} = {
+		driver => {'General' => { -UTF8 => 1 } },
+};
 
 __PACKAGE__->config(
 	'Plugin::Static::Simple' => { include_path => ["$base/root","$home/root"] },
