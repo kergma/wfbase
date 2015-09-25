@@ -13,6 +13,7 @@ __PACKAGE__->config(
 	RECURSION=>1,
 	POST_CHOMP=>1,
 	TRIM=>1,
+	ENCODING => 'utf-8',
 );
 
 =head1 NAME

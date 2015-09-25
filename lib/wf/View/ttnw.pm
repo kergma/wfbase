@@ -6,6 +6,7 @@ use base 'Catalyst::View::TT';
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
 	INCLUDE_PATH => [wf->path_to('root')],
+	ENCODING => 'utf-8',
 );
 
 =head1 NAME
