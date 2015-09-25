@@ -242,19 +242,4 @@ sub selectval_scalar
 	return $row->[0];
 }
 
-sub setv1
-{
-	my ($v1,$r,$v2)=@_;
-	
-	db::do("update data set v1=? where r =? and v2=?",undef,$v1,$r,$v2)>0
-		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$v1,$r,$v2);
-}
-
-sub setv2
-{
-	my ($v1,$r,$v2)=@_;
-	
-	db::do("update data set v2=? where r =? and v1=?",undef,$v2,$r,$v1)>0
-		or db::do("insert into data (v1,r,v2) values (?,?,?)",undef,$v1,$r,$v2);
-}
 1;
