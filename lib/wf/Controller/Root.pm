@@ -66,6 +66,17 @@ sub end : ActionClass('RenderView')
 		$c->stash->{formbuilder}->{form}=$c->stash->{FormBuilder} unless defined $c->stash->{formbuilder}->{form};
 	};
 	eval {
+		use Data::Dump 'dumpf';
+		local *Data::Dump::quote = sub { return qq("$_[0]"); };
+		$c->stash->{dump}=dumpf($c->stash,sub {
+			my($ctx, $object_ref) = @_;
+			return if defined $c->stash->{fulldump} && $c->stash->{fulldump};
+			return {object=>$ctx->class.' collapsed {...}'} if $ctx->class eq 'CGI::FormBuilder';
+			return undef;
+		});
+
+	} if $c->check_any_user_role('Разработчик');
+	0 and eval {
 		use Data::Dumper;
 		$Data::Dumper::Sortkeys=sub {
 			my ($hash) = @_;
