@@ -48,6 +48,9 @@ chdir $wd;
 
 push @$VERSION, {commit=>[sort {$b->{date} cmp $a->{date}} @$VERSION]->[0]->{date}};
 unshift @$VERSION, {commit=>'3'};
+
+use Data::Dump;
+*Data::Dump::quote = sub { return qq("$_[0]"); };
 # Configure the application.
 #
 # Note that settings in wf.conf (or other external
