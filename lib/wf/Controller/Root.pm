@@ -65,25 +65,7 @@ sub end : ActionClass('RenderView')
 		$c->stash->{formbuilder}->{display}={order=>[keys %{$c->stash->{FormBuilder}->{tmplvar}}]} unless defined $c->stash->{formbuilder}->{display};
 		$c->stash->{formbuilder}->{form}=$c->stash->{FormBuilder} unless defined $c->stash->{formbuilder}->{form};
 	};
-	eval {
-		$c->stash->{dump}=Data::Dump::dumpf($c->stash,sub {
-			my($ctx, $object_ref) = @_;
-			return if defined $c->stash->{fulldump} && $c->stash->{fulldump};
-			return {object=>$ctx->class.' collapsed {...}'} if $ctx->class eq 'CGI::FormBuilder';
-			return undef;
-		});
-
-	} if $c->check_any_user_role('Разработчик');
-	0 and eval {
-		use Data::Dumper;
-		$Data::Dumper::Sortkeys=sub {
-			my ($hash) = @_;
-			return [grep {!/FormBuilder|^_?form$/} keys %$hash];
-		};
-		undef $Data::Dumper::Sortkeys if defined $c->stash->{fulldump} && $c->stash->{fulldump};
-
-		$c->stash->{dump}=Dumper($c->stash);
-	} if $c->check_any_user_role('Разработчик');
+	$c->stash->{dump}=DDP::np($c->stash) if $c->check_any_user_role('Разработчик');
 	if (defined $c->stash->{no_wrapper} && $c->stash->{no_wrapper})
 	{
 		delete $c->stash->{dump};

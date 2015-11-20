@@ -49,8 +49,8 @@ chdir $wd;
 push @$VERSION, {commit=>[sort {$b->{date} cmp $a->{date}} @$VERSION]->[0]->{date}};
 unshift @$VERSION, {commit=>'3'};
 
-use Data::Dump;
-*Data::Dump::quote = sub { return qq("$_[0]"); };
+use DDP filters=>{ 'CGI::FormBuilder' => sub {"{CGI::FormBuilder skipped}"} };
+
 # Configure the application.
 #
 # Note that settings in wf.conf (or other external
