@@ -22,6 +22,20 @@ Catalyst Controller.
 
 =cut
 
+sub stringify_id
+{
+	my $p=shift;
+	my @queue=($p);
+	while (@queue)
+	{
+		my $o=shift @queue;
+		$_.='' foreach grep {/\d{10}/} grep {!ref $_} values $o;
+		push @queue, grep {ref $_} values $o;
+	};
+	return $p;
+}
+
+
 sub index :Path :Args
 {
 	my ( $self, $c , $f, @a) = @_;
@@ -29,7 +43,7 @@ sub index :Path :Args
 	my $r;
 	eval {no strict 'refs'; $r=$c->model->$f(@a,$p)};
 	$r={$f=>$r} if ref $r ne 'HASH';
-	%{$c->stash}=(%{$r//{}});
+	%{$c->stash}=(%{stringify_id($r)});
 	$c->forward('View::json');
 }
 
