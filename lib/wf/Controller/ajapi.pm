@@ -2,6 +2,7 @@ package wf::Controller::ajapi;
 use Moose;
 use namespace::autoclean;
 use utf8;
+no warnings 'uninitialized';
 
 BEGIN { extends 'Catalyst::Controller'; }
 
