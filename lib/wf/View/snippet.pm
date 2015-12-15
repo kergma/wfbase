@@ -1,19 +1,21 @@
-package wf::View::TT;
+package wf::View::snippet;
 
 use strict;
 use base 'Catalyst::View::TT';
 
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
-	INCLUDE_PATH => [wf->path_to('root')],
-	WRAPPER => 'wrapper.tt',
-	EVAL_PERL=>1
+	INCLUDE_PATH => ["$wfbase::base/root","$wfbase::home/root"],
+	EVAL_PERL=>1,
+	RECURSION=>1,
+	POST_CHOMP=>1,
+	TRIM=>1,
+	ENCODING => 'utf-8',
 );
-$Template::Directive::WHILE_MAX = 0;
 
 =head1 NAME
 
-wf::View::TT - TT View for wf
+wf::View::snippet - TT without wrapper View for wf 
 
 =head1 DESCRIPTION
 

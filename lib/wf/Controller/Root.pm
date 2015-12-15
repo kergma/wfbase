@@ -66,10 +66,10 @@ sub end : ActionClass('RenderView')
 		$c->stash->{formbuilder}->{form}=$c->stash->{FormBuilder} unless defined $c->stash->{formbuilder}->{form};
 	};
 	$c->stash->{dump}=DDP::np($c->stash) if $c->check_any_user_role('Разработчик');
-	if (defined $c->stash->{no_wrapper} && $c->stash->{no_wrapper})
+	if (defined $c->stash->{snippet} && $c->stash->{snippet})
 	{
-		delete $c->stash->{dump};
-		$c->forward($c->view('ttnw'));
+		$c->forward($c->view('snippet'));
+		delete $c->stash->{$_} foreach grep {$_ ne $c->stash->{snippet}} grep {defined $c->stash->{$c->stash->{snippet}}} keys %{$c->stash};
 	};
 }
 
