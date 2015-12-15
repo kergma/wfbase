@@ -5,7 +5,11 @@ use base 'Catalyst::View::TT';
 
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
-	INCLUDE_PATH => [wf->path_to('root')],
+	INCLUDE_PATH => ["$wfbase::base/root","$wfbase::home/root"],
+	EVAL_PERL=>1,
+	RECURSION=>1,
+	POST_CHOMP=>1,
+	TRIM=>1,
 	ENCODING => 'utf-8',
 );
 
