@@ -65,7 +65,7 @@ sub end : ActionClass('RenderView')
 		$c->stash->{formbuilder}->{display}={order=>[keys %{$c->stash->{FormBuilder}->{tmplvar}}]} unless defined $c->stash->{formbuilder}->{display};
 		$c->stash->{formbuilder}->{form}=$c->stash->{FormBuilder} unless defined $c->stash->{formbuilder}->{form};
 	};
-	$c->stash->{dump}=DDP::np($c->stash) if $c->check_any_user_role('Разработчик');
+	$c->stash->{dump}=DDP::np($c->stash) if $c->check_any_user_role('Разработчик','developer');
 	if (defined $c->stash->{snippet} && $c->stash->{snippet})
 	{
 		$c->forward($c->view('snippet'));
@@ -79,6 +79,7 @@ sub auto :Private
 	srand();
 	$c->stash->{version}=$wfbase::VERSION;
 	$c->stash->{systitle}=wf->config->{systitle};
+	$c->stash->{logout_anchor}=wf->config->{auth_strings}->{logout_anchor};
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;

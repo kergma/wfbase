@@ -33,9 +33,9 @@ sub login :Local :Form
 	my ( $self, $c ) = @_;
 	my $form=$self->formbuilder;
 
-	$form->field(name => 'username', label=>'Имя входа');
-	$form->field(name => 'password', label=>'Пароль', type=>'password');
-	$form->submit('Вход');
+	$form->field(name => 'username', label=>wf->config->{auth_strings}->{username_prompt}||'Имя входа');
+	$form->field(name => 'password', label=>wf->config->{auth_strings}->{password_prompt}||'Пароль', type=>'password');
+	$form->submit(wf->config->{auth_strings}->{login_button}||'Вход');
 	$form->method('post');
 
 	my $body=$form->render();

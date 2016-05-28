@@ -34,7 +34,7 @@ sub find_user
 {
 	my ( $self, $authinfo, $c ) = @_;
 
-	my $model=$c->model('dbcon');
+	my $model=$c->model(wf->config->{auth_model}||'dbcon');
 
 	my $p=$model->authinfo_password($authinfo) or return undef;
 
