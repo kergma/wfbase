@@ -10,7 +10,8 @@ use Digest::MD5;
 use Encode;
 use Date::Format;
 
-no warnings qw/uninitialized experimental/;
+no warnings qw/uninitialized/;
+no if ($] >= 5.018), 'warnings' => 'experimental';
 
 =head1 NAME
 
