@@ -53,7 +53,7 @@ use DDP filters=>{ 'CGI::FormBuilder' => sub {"{CGI::FormBuilder skipped}"} };
 
 # Configure the application.
 #
-# Note that settings in wf.conf (or other external
+# Note that settings in wfbase.conf (or other external
 # configuration file that you set up manually) take precedence
 # over this when using ConfigLoader. Thus configuration
 # details given here can function as a default configuration,
@@ -122,7 +122,7 @@ __PACKAGE__->config->{"Plugin::Session"} =
 
 =head1 NAME
 
-wf - Catalyst based application
+wfbase - Catalyst based application
 
 =head1 SYNOPSIS
 
@@ -134,7 +134,7 @@ wf - Catalyst based application
 
 =head1 SEE ALSO
 
-L<wf::Controller::Root>, L<Catalyst>
+L<wfbase::Controller::Root>, L<Catalyst>
 
 =head1 AUTHOR
 

@@ -1,4 +1,4 @@
-package wf::Controller::Root;
+package wfbase::Controller::Root;
 use Moose;
 use namespace::autoclean;
 use utf8;
@@ -13,7 +13,7 @@ __PACKAGE__->config(namespace => '');
 
 =head1 NAME
 
-wf::Controller::Root - Root Controller for wf
+wfbase::Controller::Root - Root Controller for wfbase
 
 =head1 DESCRIPTION
 
@@ -57,7 +57,7 @@ sub begin :Private
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	$c->stash->{template}='swalker.tt' unless defined $c->stash->{template} or -f wf->path_to('root')."/".$c->request->{action}.".tt";
+	$c->stash->{template}='swalker.tt' unless defined $c->stash->{template} or -f $c->path_to('root')."/".$c->request->{action}.".tt";
 	$c->stash->{stash}=$c->stash;
 	if ($c->stash->{formbuilder})
 	{
@@ -78,8 +78,8 @@ sub auto :Private
 	my ($self, $c) = @_;
 	srand();
 	$c->stash->{version}=$wfbase::VERSION;
-	$c->stash->{systitle}=wf->config->{systitle};
-	$c->stash->{logout_anchor}=wf->config->{auth_strings}->{logout_anchor};
+	$c->stash->{systitle}=$c->config->{systitle};
+	$c->stash->{logout_anchor}=$c->config->{auth_strings}->{logout_anchor};
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;

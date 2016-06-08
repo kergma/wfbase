@@ -1,4 +1,4 @@
-package wf::Controller::auth;
+package wfbase::Controller::auth;
 use Moose;
 use namespace::autoclean;
 use utf8;
@@ -7,7 +7,7 @@ BEGIN {extends 'Catalyst::Controller::FormBuilder'; }
 
 =head1 NAME
 
-wf::Controller::auth - Catalyst Controller
+wfbase::Controller::auth - Catalyst Controller
 
 =head1 DESCRIPTION
 
@@ -25,7 +25,7 @@ Catalyst Controller.
 sub index :Path :Args(0) {
     my ( $self, $c ) = @_;
 
-    $c->response->body('Matched wf::Controller::auth in auth.');
+    $c->response->body('Matched wfbase::Controller::auth in auth.');
 }
 
 sub login :Local :Form
@@ -33,16 +33,16 @@ sub login :Local :Form
 	my ( $self, $c ) = @_;
 	my $form=$self->formbuilder;
 
-	$form->field(name => 'username', label=>wf->config->{auth_strings}->{username_prompt}||'Имя входа');
-	$form->field(name => 'password', label=>wf->config->{auth_strings}->{password_prompt}||'Пароль', type=>'password');
-	$form->submit(wf->config->{auth_strings}->{login_button}||'Вход');
+	$form->field(name => 'username', label=>$c->config->{auth_strings}->{username_prompt}||'Имя входа');
+	$form->field(name => 'password', label=>$c->config->{auth_strings}->{password_prompt}||'Пароль', type=>'password');
+	$form->submit($c->config->{auth_strings}->{login_button}||'Вход');
 	$form->method('post');
 
 	my $body=$form->render();
 	if ( $form->submitted ) {
 		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
 		{
-			if ($c->check_any_user_role(wf->config->{login_role}))
+			if ($c->check_any_user_role($c->config->{login_role}))
 			{
 				$c->response->redirect('/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
@@ -51,7 +51,7 @@ sub login :Local :Form
 		}
 		else
 		{
-			$body.=wf->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+			$body.=$c->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
 		};
 	};
 	if ($c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
@@ -62,7 +62,7 @@ sub login :Local :Form
 		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
 		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
 	};
-	if ($c->user_exists and !$c->check_any_user_role(wf->config->{login_role}))
+	if ($c->user_exists and !$c->check_any_user_role($c->config->{login_role}))
 	{
 		$body.=sprintf "нет разрешения на вход для сотрудника %s",$c->user->{full_name};
 		$c->logout;

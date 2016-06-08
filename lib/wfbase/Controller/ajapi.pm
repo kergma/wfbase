@@ -1,4 +1,4 @@
-package wf::Controller::ajapi;
+package wfbase::Controller::ajapi;
 use Moose;
 use namespace::autoclean;
 use utf8;
@@ -8,7 +8,7 @@ BEGIN { extends 'Catalyst::Controller'; }
 
 =head1 NAME
 
-wf::Controller::ajapi - Catalyst Controller
+wfbase::Controller::ajapi - Catalyst Controller
 
 =head1 DESCRIPTION
 

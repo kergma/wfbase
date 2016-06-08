@@ -1,4 +1,4 @@
-package wf::Model::ppdb;
+package wfbase::Model::ppdb;
 
 use strict;
 use warnings;
@@ -11,13 +11,13 @@ use POSIX ":sys_wait_h";
 use Time::HiRes 'usleep';
 no warnings 'uninitialized';
 use utf8;
-use wf::Model::dbcon;
+use wfbase::Model::dbcon;
 
 
 
 =head1 NAME
 
-wf::Model::ppdb - Catalyst Model
+wfbase::Model::ppdb - Catalyst Model
 
 =head1 DESCRIPTION
 

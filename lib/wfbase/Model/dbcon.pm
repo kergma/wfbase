@@ -1,4 +1,4 @@
-package wf::Model::dbcon;
+package wfbase::Model::dbcon;
 use Moose;
 use namespace::autoclean;
 use utf8;
@@ -15,7 +15,7 @@ no if ($] >= 5.018), 'warnings' => 'experimental';
 
 =head1 NAME
 
-wf::Model::dbcon - Catalyst Model
+wfbase::Model::dbcon - Catalyst Model
 
 =head1 DESCRIPTION
 
@@ -207,12 +207,12 @@ sub connect
 {
 	$dbh||=DBI->connect(
 		"dbi:Pg:".join(';',grep {$_} (
-			wf->config->{dbhost}?"host=".wf->config->{dbhost}:undef,
-			wf->config->{dbport}?"port=".wf->config->{dbport}:undef,
-			wf->config->{dbname}?"dbname=".wf->config->{dbname}:undef,
+			$cc->config->{dbhost}?"host=".$cc->config->{dbhost}:undef,
+			$cc->config->{dbport}?"port=".$cc->config->{dbport}:undef,
+			$cc->config->{dbname}?"dbname=".$cc->config->{dbname}:undef,
 		)),
-		wf->config->{dbusername},
-		wf->config->{dbauth},
+		$cc->config->{dbusername},
+		$cc->config->{dbauth},
 		{InactiveDestroy=>1}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;

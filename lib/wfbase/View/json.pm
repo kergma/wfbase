@@ -1,15 +1,15 @@
-package wf::View::json;
+package wfbase::View::json;
 
 use strict;
 use base 'Catalyst::View::JSON';
 
 =head1 NAME
 
-wf::View::json - Catalyst JSON View
+wfbase::View::json - Catalyst JSON View
 
 =head1 SYNOPSIS
 
-See L<wf>
+See L<wfbase>
 
 =head1 DESCRIPTION
 
