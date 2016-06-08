@@ -29,7 +29,9 @@ use Catalyst qw/
 
 extends 'Catalyst';
 
-our $home=Catalyst::Utils::home('wf');
+use FindBin;
+use File::Basename;
+our $home=$FindBin::Bin;
 our $base=Catalyst::Utils::home('wfbase');
 
 our $VERSION=[];

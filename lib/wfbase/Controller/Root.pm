@@ -86,10 +86,11 @@ sub auto :Private
 	};
 	return 1 if $c->{request}->{action} eq 'pki';
 	
-	if (!$c->user_exists and $c->request->{env}->{HTTP_X_VERIFIED} eq 'SUCCESS')
+	my $env=$c->request->{env};
+	if (!$c->user_exists and $env->{HTTP_X_VERIFIED} eq 'SUCCESS')
 	{
 		my $uid;
-		$uid=$1 if $c->request->{env}->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
+		$uid=$1 if $env->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
 		$c->authenticate({uid=>$uid,password=>'***'}) if $uid;
 	};
 
@@ -101,8 +102,8 @@ sub auto :Private
 	};
 	if (!$c->user_exists)
 	{
-		$c->response->redirect('/auth/login');
-		$c->flash->{redirect_after_login} = '/' . $c->req->path;
+		$c->response->redirect($env->{HTTP_X_SITE_ROOT}.'/auth/login');
+		$c->flash->{redirect_after_login} = $env->{HTTP_X_SITE_ROOT}.'/' . $c->req->path;
 		return 0;
 	};
     
