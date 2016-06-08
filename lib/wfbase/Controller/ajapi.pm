@@ -45,7 +45,7 @@ sub index :Path :Args
 	eval {no strict 'refs'; $r=$c->model->$f(@a,$p)};
 	$r={$f=>$r} if ref $r ne 'HASH';
 	%{$c->stash}=(%{stringify_id($r)});
-	$c->forward('View::json');
+	$c->forward('wfbase::View::json');
 }
 
 
