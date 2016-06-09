@@ -52,6 +52,11 @@ Attempt to render a view, if needed.
 sub begin :Private
 {
 	my ($self, $c) = @_;
+	if (!$c->sessionid and $c->req->{parameters}->{sessionid})
+	{
+		$c->_sessionid($c->req->{parameters}->{sessionid});
+		$c->_load_session();
+	};
 }
 
 sub end : ActionClass('RenderView')

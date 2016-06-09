@@ -49,6 +49,7 @@ sub login :Local :Form
 			if ($c->check_any_user_role($c->config->{login_role}))
 			{
 				$c->stash->{success}=1 unless $error;
+				$c->stash->{sessionid}=$c->sessionid;
 				$c->forward('wfbase::View::json') and return 1 if $env->{HTTP_ACCEPT}=~'application/json';
 				$c->response->redirect($env->{HTTP_X_SITE_ROOT}.'/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
