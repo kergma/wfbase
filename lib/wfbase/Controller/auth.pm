@@ -2,6 +2,7 @@ package wfbase::Controller::auth;
 use Moose;
 use namespace::autoclean;
 use utf8;
+no warnings 'uninitialized';
 
 BEGIN {extends 'Catalyst::Controller::FormBuilder'; }
 
@@ -47,6 +48,8 @@ sub login :Local :Form
 		{
 			if ($c->check_any_user_role($c->config->{login_role}))
 			{
+				$c->stash->{success}=1 unless $error;
+				$c->forward('wfbase::View::json') and return 1 if $env->{HTTP_ACCEPT}=~'application/json';
 				$c->response->redirect($env->{HTTP_X_SITE_ROOT}.'/');
 				$c->response->redirect($c->flash->{redirect_after_login}) if defined $c->flash->{redirect_after_login};
 				return;
@@ -71,7 +74,7 @@ sub login :Local :Form
 		$c->logout;
 	};
 
-	$body.=$c->stash->{error}=$error;
+	$body.=$c->stash->{error}=$error if $error;
 	$c->forward('wfbase::View::json') and return 1 if $env->{HTTP_ACCEPT}=~'application/json';
 	$c->response->body($body);
 }
