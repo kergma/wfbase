@@ -71,6 +71,7 @@ sub end : ActionClass('RenderView')
 		$c->forward($c->view('snippet'));
 		delete $c->stash->{$_} foreach grep {$_ ne $c->stash->{snippet}} grep {defined $c->stash->{$c->stash->{snippet}}} keys %{$c->stash};
 	};
+	$c->response->headers->header('Access-Control-Allow-Origin'=>'*');
 }
 
 sub auto :Private
@@ -79,7 +80,6 @@ sub auto :Private
 	srand();
 	$c->stash->{version}=$wfbase::VERSION;
 	$c->stash->{systitle}=$c->config->{systitle};
-	$c->stash->{logout_anchor}=$c->config->{auth_strings}->{logout_anchor};
 	if ($c->controller eq $c->controller('auth'))
 	{
 		return 1;
@@ -97,7 +97,7 @@ sub auto :Private
 	if (!$c->user_exists and $c->controller eq $c->controller('ajapi'))
 	{
 		$c->stash->{error}='not authenticated';
-		$c->forward('View::json');
+		$c->forward('wfbase::View::json');
 		return 0;
 	};
 	if (!$c->user_exists)

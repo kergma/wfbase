@@ -41,8 +41,9 @@ sub login :Local :Form
 
 	my $env=$c->request->{env};
 	my $body=$form->render();
+	my $error="";
 	if ( $form->submitted ) {
-		if ($c->authenticate({username=>$form->field('username'),password=>$form->field('password')}))
+		if ($c->authenticate($c->req->parameters))
 		{
 			if ($c->check_any_user_role($c->config->{login_role}))
 			{
@@ -53,7 +54,7 @@ sub login :Local :Form
 		}
 		else
 		{
-			$body.=$c->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+			$error.=$c->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
 		};
 	};
 	if ($env->{HTTP_X_VERIFIED} eq 'SUCCESS')
@@ -66,10 +67,12 @@ sub login :Local :Form
 	};
 	if ($c->user_exists and !$c->check_any_user_role($c->config->{login_role}))
 	{
-		$body.=sprintf "нет разрешения на вход для сотрудника %s",$c->user->{full_name};
+		$error.=sprintf $c->config->{auth_strings}->{forbidden}||"нет разрешения на вход для сотрудника %s",$c->user->{full_name}||$c->user->{username};
 		$c->logout;
 	};
 
+	$body.=$c->stash->{error}=$error;
+	$c->forward('wfbase::View::json') and return 1 if $env->{HTTP_ACCEPT}=~'application/json';
 	$c->response->body($body);
 }
 
