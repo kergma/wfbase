@@ -206,11 +206,7 @@ for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref 
 sub connect
 {
 	$dbh||=DBI->connect(
-		"dbi:Pg:".join(';',grep {$_} (
-			$cc->config->{dbhost}?"host=".$cc->config->{dbhost}:undef,
-			$cc->config->{dbport}?"port=".$cc->config->{dbport}:undef,
-			$cc->config->{dbname}?"dbname=".$cc->config->{dbname}:undef,
-		)),
+		"dbi:".$cc->config->{dbdriver}.":".join(';',map {({dbhost=>'host',dbport=>'port'}->{$_}||$_)."=".$cc->config->{$_}} grep {$cc->config->{$_}} qw/dbhost dbport dbname database/),
 		$cc->config->{dbusername},
 		$cc->config->{dbauth},
 		{InactiveDestroy=>1}
