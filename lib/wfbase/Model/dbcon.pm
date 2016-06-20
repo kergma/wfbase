@@ -198,6 +198,15 @@ for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref 
 	*$funame=sub {
 		db::connect() unless $dbh;
 		my $rv=$dbh->$funame(@_);
+		if ($dbh->errstr and !$dbh->ping)
+		{
+			print "db connection lost ",$dbh->errstr,"\n";
+			undef $dbh;
+			db::connect();
+			print "reconnected\n";
+			$rv=$dbh->$funame(@_);
+		};
+
 		#Catalyst::Exception->throw($DBI::errstr) if $DBI::errstr;
 		return $rv;
 	};
