@@ -62,7 +62,7 @@ sub begin :Private
 sub end : ActionClass('RenderView')
 {
 	my ($self, $c) = @_;
-	$c->stash->{template}='swalker.tt' unless defined $c->stash->{template} or -f $c->path_to('root')."/".$c->request->{action}.".tt";
+	$c->stash->{template}='swalker.tt' unless defined $c->stash->{template} or -f $c->path_to('root')."/".$c->action->{reverse}.".tt";
 	$c->stash->{stash}=$c->stash;
 	if ($c->stash->{formbuilder})
 	{
