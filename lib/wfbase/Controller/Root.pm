@@ -105,7 +105,8 @@ sub auto :Private
 		$c->forward('wfbase::View::json');
 		return 0;
 	};
-	return 1 if grep {my $l=$_; print "$l\n";grep {$l eq $_} @{$c->config->{public_pages}}} ($c->action->{reverse},$c->request->{env}->{PATH_INFO});
+	return 1 if grep {my $l=$_; grep {$l eq $_} @{$c->config->{public_pages}}} ($c->action->{reverse},$c->request->{env}->{PATH_INFO});
+
 	if (!$c->user_exists)
 	{
 		$c->response->redirect($env->{HTTP_X_SITE_ROOT}.'/auth/login');
