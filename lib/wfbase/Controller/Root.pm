@@ -2,6 +2,7 @@ package wfbase::Controller::Root;
 use Moose;
 use namespace::autoclean;
 use utf8;
+no warnings 'uninitialized';
 
 BEGIN { extends 'Catalyst::Controller' }
 
