@@ -28,9 +28,10 @@ The root page (/)
 
 =cut
 
-sub index :Path :Args(0) {
-    my ( $self, $c ) = @_;
-
+sub index :Path :Args(0)
+{
+	my ( $self, $c ) = @_;
+	return $c->forward($c->config->{root_forward}) if $c->config->{root_forward};
 }
 
 =head2 default
