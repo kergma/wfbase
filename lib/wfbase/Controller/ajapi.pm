@@ -30,8 +30,8 @@ sub stringify_id
 	while (@queue)
 	{
 		my $o=shift @queue;
-		$_.='' foreach grep {/\d{10}/} grep {!ref $_} values $o;
-		push @queue, grep {ref $_} values $o;
+		$_.='' foreach grep {/\d{10}/} grep {!ref $_} values @$o;
+		push @queue, grep {ref $_} values @$o;
 	};
 	return $p;
 }
