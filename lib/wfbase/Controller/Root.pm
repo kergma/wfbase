@@ -115,6 +115,7 @@ sub auto :Private
 		$c->flash->{redirect_after_login} = $env->{HTTP_X_SITE_ROOT}.'/' . $c->req->path;
 		return 0;
 	};
+	$c->model('dbcon'); # make dbcon accept context
     
 	return 1;
 }
