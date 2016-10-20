@@ -49,7 +49,6 @@ foreach my $d ($home, $base)
 chdir $wd;
 
 push @$VERSION, {commit=>[sort {$b->{date} cmp $a->{date}} @$VERSION]->[0]->{date}};
-unshift @$VERSION, {commit=>'3'};
 
 use DDP filters=>{ 'CGI::FormBuilder' => sub {"{CGI::FormBuilder skipped}"} };
 
