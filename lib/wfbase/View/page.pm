@@ -7,7 +7,7 @@ extends 'Catalyst::View::TT';
 __PACKAGE__->config(
 	TEMPLATE_EXTENSION => '.tt',
 	render_die => 1,
-	INCLUDE_PATH => ["$wfbase::base/root","$wfbase::home/root"],
+	INCLUDE_PATH => $wfbase::roots,
 	WRAPPER => 'page.tt',
 	EVAL_PERL=>1,
 	RECURSION=>1,

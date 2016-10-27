@@ -48,6 +48,10 @@ foreach my $d ($home, $base)
 };
 chdir $wd;
 
+use File::Find;
+our $roots;
+find({wanted=>sub{return unless -d $File::Find::name and basename($File::Find::name) eq 'root';push @$roots, $File::Find::name; }},$wfbase::home);
+
 push @$VERSION, {commit=>[sort {$b->{date} cmp $a->{date}} @$VERSION]->[0]->{date}};
 
 use DDP filters=>{ 'CGI::FormBuilder' => sub {"{CGI::FormBuilder skipped}"} };
@@ -76,7 +80,7 @@ __PACKAGE__->config->{'Plugin::ConfigLoader'} = {
 };
 
 __PACKAGE__->config(
-	'Plugin::Static::Simple' => { include_path => ["$base/root","$home/root"] },
+	'Plugin::Static::Simple' => { include_path => $roots },
 );
 
 __PACKAGE__->config->{'Plugin::Authentication'} =
