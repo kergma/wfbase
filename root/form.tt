@@ -25,7 +25,16 @@
 </table>
 [%ELSE%][%#footer%]
 <div style="margin-top:1em;margin-left:2em">
-[% form.submit %]
+[% form.submit UNLESS form.submitonchange%]
+[% IF form.submitonchange%]
+<script>
+$(function(){
+	$('#[%form.submitonchange%]').change(function(e){
+		$(e.target).closest('form').submit();
+	});
+});
+</script>
+[%END%]
 </div>
 [% form.end %]
 [%END%]

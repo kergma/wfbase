@@ -109,13 +109,14 @@ sub auto :Private
 	};
 	return 1 if grep {my $l=$_; grep {$l eq $_} @{$c->config->{public_pages}}} ($c->action->{reverse},$c->request->{env}->{PATH_INFO});
 
+	$c->model('dbcon'); # make dbcon accept context
+	eval{$c->model->update_user($c)};
 	if (!$c->user_exists)
 	{
 		$c->response->redirect($env->{HTTP_X_SITE_ROOT}.'/auth/login');
 		$c->flash->{redirect_after_login} = $env->{HTTP_X_SITE_ROOT}.'/' . $c->req->path;
 		return 0;
 	};
-	$c->model('dbcon'); # make dbcon accept context
     
 	return 1;
 }
