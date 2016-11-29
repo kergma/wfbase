@@ -85,6 +85,7 @@ sub auto :Private
 {
 	my ($self, $c) = @_;
 	srand();
+	$c->model('dbcon'); # make dbcon accept context
 	$c->stash->{version}=$wfbase::VERSION;
 	$c->stash->{systitle}=$c->config->{systitle};
 	if ($c->controller eq $c->controller('auth'))
@@ -109,7 +110,6 @@ sub auto :Private
 	};
 	return 1 if grep {my $l=$_; grep {$l eq $_} @{$c->config->{public_pages}}} ($c->action->{reverse},$c->request->{env}->{PATH_INFO});
 
-	$c->model('dbcon'); # make dbcon accept context
 	eval{$c->model->update_user($c)};
 	if (!$c->user_exists)
 	{
