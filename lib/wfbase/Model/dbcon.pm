@@ -192,7 +192,7 @@ package db;
 
 my $dbh;
 
-for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref selectcol_arrayref selectall_arrayref selectall_hashref last_insert_id quote_identifier/)
+for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref selectcol_arrayref selectall_arrayref selectall_hashref last_insert_id quote_identifier begin_work commit rollback/)
 {
 	no strict 'refs';
 	*$funame=sub {
