@@ -1,0 +1,19 @@
+[%# vim: set filetype=tt2: -%]
+[%UNLESS footer%]
+[% IF h.running %]
+<p>Process is running [% h.running.duration %]s</p>
+[%IF h.running.pg_pid%]
+<form action="/query/cancel?deferral=[%h.deferral%]" method="post">
+<p>Click <input type="submit" value="break"/> to stop</p>
+</form>
+[%END%]
+[%stash.reload=3000%]
+[%ELSIF h.error%]
+<div>Error: [%h.error%]</div>
+[%ELSE%]
+<div>
+[%IF h.defined('row_count')%][% h.row_count %] rows [%END%]
+retrieved [% h.completedf %] ([% h.duration %] s)[%IF h.download%], <a href="[%h.download%]">download</a>[%END%]
+</div>
+[%END%]
+[%END%]

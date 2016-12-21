@@ -105,17 +105,6 @@ __PACKAGE__->config->{'Plugin::Authentication'} =
 	}
 };
 
-__PACKAGE__->config->{"Plugin::Cache"} =
-{
-	backend =>
-	{
-		class => "Cache::FastMmap",
-		expire_time => 300,
-		enable_stats => 1,
-		page_size => '1024k'
-	},
-};
-
 __PACKAGE__->config->{"Plugin::Session"} =
 {
 	unlink_on_exit=>0

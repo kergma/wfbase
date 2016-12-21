@@ -1,4 +1,4 @@
-package wfbase::Model::ppdb;
+package wfbase::Model::util;
 
 use strict;
 use warnings;
@@ -44,13 +44,6 @@ sub ACCEPT_CONTEXT
 	return $self;
 }
 
-sub sconnect
-{
-	my $sdbh=DBI->connect("dbi:Pg:dbname=worker;host=ppdb", 'stat', undef, {AutoCommit => 1,pg_enable_utf8=>0});
-	$sdbh->do("create function pg_temp.wfuser() returns uuid as \$\$select '${\($cc->user->{souid})}'::uuid\$\$ language sql");
-	return $sdbh;
-}
-
 sub array_ref
 {
 	my ($self, $q, @values)=@_;
@@ -62,16 +55,7 @@ sub array_ref
 		$q=shift @values;
 	};
 
-	my $sth;
-	if ($opts->{use_safe_connection})
-	{
-		my $sdbh=$self->sconnect() or return undef;
-		$sth=$sdbh->prepare($q);
-	}
-	else
-	{
-		$sth=db::prepare($q);
-	};
+	my $sth=db::prepare($q);
 	my $r=$sth->execute(@values);
 	return undef unless $r;
 	my $row=$opts->{row};
@@ -150,8 +134,8 @@ sub query
 
 	return defer($self,sub {
 		my $running=pop;
-		my $sdbh=$self->sconnect() or return undef;
-		$running->{pg_pid}=$sdbh->{pg_pid};
+		db::connect();
+		$running->{pg_pid}=$db::dbh->{pg_pid};
 		$cache->set("rkey-$running->{rkey}",$running,0);
 		my $d=$cache->get("defr-$running->{deferral}");
 		$d->{query}=$query;
@@ -159,20 +143,28 @@ sub query
 
 		my $result={};
 		my $sth;
-		eval {$sth=$sdbh->prepare($query);};
+		eval {$sth=db::prepare($query);};
 		if ($sth and $sth->execute(@_))
 		{
 			my @rows;
+			my $csvfile=$params->{csv};
+			$csvfile="$csvfile/$running->{deferral}.csv" if $csvfile and -d $csvfile;
+			open my $c, ">$csvfile" if $csvfile;
+			print $c csv(@{$sth->{NAME}}) if $c;
+			my $row_count=0;
 			while (my $r=$sth->fetchrow_hashref)
 			{
-				push @rows, {map {$_ => $r->{$_}} keys %$r};;
+				print $c csv(map {$r->{$_}} @{$sth->{NAME}}) if $c;
+				push @rows, {map {$_ => $r->{$_}} keys %$r} unless $params->{throw_data};
+				$row_count++;
 			}; 
-
-			$result={ARRAY=>\@rows,header=>[@{$sth->{NAME}}],error=>$@?$@:$sdbh->errstr};
+			$result={header=>[@{$sth->{NAME}}],row_count=>$row_count,error=>$@?$@:db::errstr};
+			$result->{ARRAY}=\@rows unless $params->{throw_data};
+			$result->{csvfile}=$csvfile if $c;
+			close $c if $csvfile;
 		};
-		$result={%$result,(query=>$query,error=>$@?$@:$sdbh->errstr)};
+		$result={%$result,(query=>$query,error=>$@?$@:db::errstr)};
 		$sth->finish();
-		$sdbh->disconnect();
 		return $result;
 	},$params,@values);
 }
@@ -183,10 +175,7 @@ sub cancel_query
 	$r=deferred($self,$r) if ref \$r eq 'SCALAR';
 	return unless $r->{running};
 
-	my $sdbh=$self->sconnect() or return undef;
-	my $re=$sdbh->selectrow_hashref("select cancel_query(?)",undef,$r->{running}->{pg_pid});
-	$re=db::selectrow_hashref("select cancel_query(?)",undef,$r->{running}->{pg_pid}) unless $re;
-	$sdbh->disconnect;
+	my $re=db::selectrow_hashref("select cancel_query(?)",undef,$r->{running}->{pg_pid});
 	unless ($re)
 	{
 		kill 9, $r->{running}->{pid};
@@ -278,7 +267,7 @@ sub deferred
 	($deferral,$onlyheader)=(defer(@_)->{deferral},undef) if ref $deferral eq 'CODE';
 	my $result=$cache->get("defr-$deferral");
 
-	return {error=>'Неправильный или устаревший отложенный идентификатор',deferral=>$deferral} unless $result;
+	return {error=>'Ivalid or expired deferral inentifier',deferral=>$deferral} unless $result;
 	$result->{running}=$cache->get("rkey-$result->{rkey}");
 	$result->{running}->{duration}=time-$result->{running}->{start} if defined $result->{running};
 	unless ($cache->set("defr-$deferral",$result,defined $result->{running}?0:undef))
@@ -299,5 +288,19 @@ sub deferred
 	return $result;
 }
 
+sub csv($);
+sub csv($)
+{
+	my @row=@_;
+	use Encode;
+	my $opts=shift if ref $row[0] eq 'HASH';
+	s/"/""/g foreach @row;
+	/[;"]/ and $_=qq{"$_"} foreach @row;
+	/^[\d\-\.]+$/ and s/\./,/ foreach @row;
+	$_=encode($opts->{encoding}||'cp1251',$_) foreach @row;
+	return sprintf "%s\r\n",join (';',@row);
+}
+
 
 1;
+
