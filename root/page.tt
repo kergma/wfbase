@@ -6,9 +6,11 @@
 <meta http-equiv="cache-control" content="no-cache">
 <title>[%pagetitle%][%pagetitle and systitle and " - "%][%systitle%]</title>
 
-<script type="text/javascript" src="/s/jquery-1.8.1.min.js"></script>
-
 <link rel="stylesheet" href="/s/common.css" />
+<link rel="stylesheet" href="/s/jquery-ui-1.12.1/jquery-ui.min.css" />
+<script type="text/javascript" src="/s/jquery-1.8.1.min.js"></script>
+<script src="/s/jquery-ui-1.12.1/jquery-ui.min.js" />
+
 [%IF c.config.mm_bgcolor %]
 <style>
 #auth, #main-menu, #main-menu ul, #main-menu a, #main-menu a:visited, #main-menu li ul, #main-menu > li:hover > ul {
