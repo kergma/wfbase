@@ -16,7 +16,7 @@
 [%ELSIF h.deferral%]
         [%INCLUDE deferral.tt UNLESS footer%]
 	[%IF h.rows %][%INCLUDE rowser.tt h=h UNLESS footer%][%n.stop=1%][%END%]
-	[%n.stop=1%]
+	[% IF h.running %][%n.stop=1%][%END%]
 [%ELSIF h.rows%]
 	[%INCLUDE rowser.tt h=h UNLESS footer%]
 	[%n.stop=1%]
