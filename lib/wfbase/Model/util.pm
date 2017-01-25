@@ -44,7 +44,7 @@ sub ACCEPT_CONTEXT
 	return $self;
 }
 
-sub array_ref
+sub main::array_ref
 {
 	my ($self, $q, @values)=@_;
 
@@ -78,7 +78,7 @@ sub array_ref
 	return \@result;
 }
 
-sub cached_array_ref
+sub main::cached_array_ref
 {
 	my ($self, $q, @values)=@_;
 	my $opts={};
@@ -99,14 +99,13 @@ sub cached_array_ref
 	undef $result if $opts->{update};
 	unless ($result)
 	{
-		$result=array_ref(@_);
+		$result=::array_ref(@_);
 		$cc->cache->set("aref-".$qkey,$result) if defined $result;
 	};
 	return $result;
 }
 
-
-sub options_list
+sub main::options_list
 {
 	my ($self, $q, @values)=@_;
 	my $opts={row=>'arrayref'};
@@ -115,10 +114,35 @@ sub options_list
 		%$opts=(%$q,%$opts);
 		$q=shift @values;
 	};
-	my $r=cached_array_ref($self,$opts,$q,@values);
+	my $r=::cached_array_ref($self,$opts,$q,@values);
 	$_=scalar(@$_)==1?$_->[0]:{$_->[0]=>$_->[1]} foreach @$r;
 	return $r;
 
+}
+
+sub main::read_table
+{
+	my $self=shift;
+	my $query=shift;
+	my @values=@_;
+
+	my $start=time;
+
+	my $sth=db::prepare($query);
+	$sth->execute(@values);
+
+	my %result=(query=>$query,values=>[@values],header=>[map(encode("utf8",$_),@{$sth->{NAME}})],rows=>[]);
+
+	while(my $r=$sth->fetchrow_hashref)
+	{
+		push @{$result{rows}}, {map {encode("utf8",$_) => $r->{$_}} keys %$r};;
+	};
+	$sth->finish;
+
+	$result{duration}=time-$start;
+	$result{retrievedf}=$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',time);
+
+	return \%result;
 }
 
 sub query
@@ -127,14 +151,12 @@ sub query
 	my $query=shift;
 	my $params=shift;
 	$params={} unless defined $params;
-	$params->{need_db}=0;
 	my @values=@_;
 
 	my $cache=$cc->cache;
 
 	return defer($self,sub {
 		my $running=pop;
-		db::connect();
 		$running->{pg_pid}=$db::dbh->{pg_pid};
 		$cache->set("rkey-$running->{rkey}",$running,0);
 		my $d=$cache->get("defr-$running->{deferral}");
@@ -230,8 +252,7 @@ sub defer
 	};
 	if ($params->{need_db}//1)
 	{
-		undef $db::dbh;
-		db::connect();
+		db::clone or db::connect;
 		$running->{pg_pid}=db::pg_pid;
 	};
 	
@@ -259,7 +280,6 @@ sub defer
 
 }
 
-
 sub deferred
 {
 	my ($self,$deferral,$onlyheader)=@_;
@@ -267,7 +287,7 @@ sub deferred
 	($deferral,$onlyheader)=(defer(@_)->{deferral},undef) if ref $deferral eq 'CODE';
 	my $result=$cache->get("defr-$deferral");
 
-	return {error=>'Ivalid or expired deferral inentifier',deferral=>$deferral} unless $result;
+	return {error=>'Invalid or expired deferral identifier',deferral=>$deferral} unless $result;
 	$result->{running}=$cache->get("rkey-$result->{rkey}");
 	$result->{running}->{duration}=time-$result->{running}->{start} if defined $result->{running};
 	unless ($cache->set("defr-$deferral",$result,defined $result->{running}?0:undef))
