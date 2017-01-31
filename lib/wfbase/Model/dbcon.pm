@@ -96,6 +96,7 @@ sub entity
 package db;
 
 my $dbh;
+my $conf;
 
 for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref selectcol_arrayref selectall_arrayref selectall_hashref last_insert_id quote_identifier begin_work commit rollback/)
 {
@@ -119,10 +120,12 @@ for my $funame (qw/errstr do prepare quote selectrow_arrayref selectrow_hashref 
 
 sub connect
 {
+	my $c=shift||$conf||$cc->config;
+	$conf||=$c;
 	$dbh||=DBI->connect(
-		"dbi:".$cc->config->{dbdriver}.":".join(';',map {({dbhost=>'host',dbport=>'port'}->{$_}||$_)."=".$cc->config->{$_}} grep {$cc->config->{$_}} qw/dbhost dbport dbname database/),
-		$cc->config->{dbusername},
-		$cc->config->{dbauth},
+		"dbi:".$c->{dbdriver}.":".join(';',map {({dbhost=>'host',dbport=>'port'}->{$_}||$_)."=".$c->{$_}} grep {$c->{$_}} qw/dbhost dbport dbname database/),
+		$c->{dbusername},
+		$c->{dbauth},
 		{InactiveDestroy=>1}
 	);
 	Catalyst::Exception->throw($DBI::errstr) unless $dbh;
