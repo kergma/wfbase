@@ -42,7 +42,7 @@ body {
 
 
 #auth {
-	background:#225AA5;
+	background:#777;
 	color: #FFF;
 	font: 100% 'Lucida Sans Unicode', 'Bitstream Vera Sans', 'Trebuchet Unicode MS', 'Lucida Grande', Verdana, Helvetica, sans-serif;
 	text-align: center;
@@ -69,7 +69,7 @@ body {
 }
 
 #main-menu, #main-menu ul {
-	background:#225AA5;
+	background:#777;
 	height:35px;
 	padding:0; 
 	margin:0; 
@@ -94,7 +94,7 @@ body {
 }
 #main-menu a, #main-menu a:visited {
 
-	background:#225AA5; 
+	background:#777; 
 	color:#cccccc;
 	padding:0px 25px;
 	text-decoration:none;
@@ -125,7 +125,7 @@ body {
 	color:#FFF;
 }
 #main-menu li ul {
-	background:#225AA5;
+	background:#777;
 	display:none;
 	height:auto;
 	padding:0px;
@@ -142,7 +142,7 @@ body {
 	left:250px;
 }
 #main-menu > li:hover > ul {
-	background:#225AA5;
+	background:#777;
 	left:0; 
 	top:35px;
 }
