@@ -1,0 +1,66 @@
+[%# vim: set filetype=html: -%]
+[% UNLESS stash.timerange_js %]
+<link rel="stylesheet" href="/s/jquery-ui-timepicker-addon.css" />
+<script type="text/javascript" src="/s/jquery-ui-timepicker-addon.js"></script>
+<script>
+var today,now;
+function formatDate(d)
+{
+	return d.getFullYear()+'-'+(d.getMonth()<9?'0'+(d.getMonth()+1):(d.getMonth()+1))+'-'+(d.getDate()<10?'0'+d.getDate():d.getDate());
+}
+function formatTime(d)
+{
+	return formatDate+' '+(d.getHours()<10?'0'+d.getHours():d.getHours())+':'+(d.getMinutes()<10?'0'+d.getMinutes():d.getMinutes())+':'+(d.getSeconds()<10?'0'+d.getSeconds():d.getSeconds());
+}
+function setRange(e,r)
+{
+	var i=$(e).closest('.uti');
+	var f=$('.from',i);
+	var t=$('.to',i);
+	if (r=='today')
+	{
+		var d=new Date();
+		t.val('');
+		f.val(formatDate(d));
+	};
+	if (r=='yesterday')
+	{
+		var d=new Date();
+		t.val(formatDate(d));
+		d.setDate(d.getDate()-1);
+		f.val(formatDate(d));
+	};
+	if (r=='curmonth')
+	{
+		var d=new Date();
+		d.setDate(1);
+		t.val('');
+		f.val(formatDate(d));
+	};
+	if (r=='lastmonth')
+	{
+		var d=new Date();
+		d.setDate(1);
+		t.val(formatDate(d));
+		d.setDate(d.getDate()-1);
+		d.setDate(1);
+		f.val(formatDate(d));
+	};
+	if (r=='clear')
+	{
+		f.val('');
+		t.val('');
+	};
+}
+$(function(){
+	$('.dtpicker').datetimepicker({dateFormat:'yy-mm-dd'});
+});
+</script>
+[% stash.timerange_js="yes" %]
+[% END %][%# timerange_js%]
+[%xname=f.name%]
+<span class="uti">
+[%fname=xname _ "_from" f.name=fname f.class="dtpicker from" f.value=c.req.parameters.$fname %] from [%f.render%] 
+[%fname=xname _ "_to" f.name=fname f.class="dtpicker to" f.value=c.req.parameters.$fname %] to [%f.render%] 
+<a href="javascript:" onclick="setRange(this,'today')">Today</a>, <a href="javascript:" onclick="setRange(this,'yesterday')">Yesterday</a>, <a href="javascript:" onclick="setRange(this,'curmonth')">Current month</a>, <a href="javascript:" onclick="setRange(this,'lastmonth')">Last month</a>, <a href="javascript:" onclick="setRange(this,'clear')">Clear</a>
+</span>
