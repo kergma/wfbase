@@ -1,0 +1,32 @@
+[%# vim: set filetype=html: -%]
+<div id="files">
+<div id="filei-1">
+<input type="file" name="filei1">
+<a href="javascript:;" onclick="remove(this)">(x)</a>
+</div>
+</div>
+<div>
+<a href="javascript:addfile(1);">ещё файл</a>
+</div>
+[% UNLESS stash.addfile %]
+<script language="JavaScript" type="text/javascript">
+<!--
+var filei=1;
+function remove(a)
+{
+        var d=a.parentNode;
+        d.parentNode.removeChild(d);
+}
+function addfile()
+{
+        var dirdiv=document.getElementById('files');
+        filei++;
+        var el=document.createElement('div');
+        el.setAttribute('id','filei-'+filei);
+        el.innerHTML='<input type="file" name="filei'+filei+'"/> <a href="javascript:;" onclick="remove(this)">(x)</a>';
+        dirdiv.appendChild(el);
+}
+//-->
+</script>
+[% stash.addfile="yes" %]
+[% END %][%# addfile%]
