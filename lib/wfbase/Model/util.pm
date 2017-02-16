@@ -176,7 +176,7 @@ sub query
 			my $row_count=0;
 			while (my $r=$sth->fetchrow_hashref)
 			{
-				print $c csv(map {$r->{$_}} @{$sth->{NAME}}) if $c;
+				print $c csv({encoding=>'utf8'}, map {$r->{$_}} @{$sth->{NAME}}) if $c;
 				push @rows, {map {$_ => $r->{$_}} keys %$r} unless $params->{throw_data};
 				$row_count++;
 			}; 
@@ -313,7 +313,7 @@ sub csv($)
 {
 	my @row=@_;
 	use Encode;
-	my $opts=shift if ref $row[0] eq 'HASH';
+	my $opts=shift @row if ref $row[0] eq 'HASH';
 	s/"/""/g foreach @row;
 	/[;"]/ and $_=qq{"$_"} foreach @row;
 	/^[\d\-\.]+$/ and s/\./,/ foreach @row;
