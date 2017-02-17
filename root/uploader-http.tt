@@ -6,7 +6,7 @@
 </div>
 </div>
 <div>
-<a href="javascript:addfile(1);">ещё файл</a>
+<a href="javascript:addfile(1);">another file</a>
 </div>
 [% UNLESS stash.addfile %]
 <script language="JavaScript" type="text/javascript">

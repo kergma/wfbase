@@ -13,7 +13,7 @@
 [%ELSE%]
 <div>
 [%IF h.defined('row_count')%][% h.row_count %] rows [%END%]
-retrieved [% h.completedf %] ([% h.duration %] s)[%IF h.download%], <a href="[%h.download%]">download</a>[%END%][% IF h.permalink %], <a href="[% h.permalink %]">permalink</a>[% END %]
+retrieved[%IF h.params.show_rows and h.params.show_rows<h.row_count %], [%h.params.show_rows%] shown [%END%] [% h.completedf %] ([% h.duration %] s)[%IF h.download%], <a href="[%h.download%]">download</a>[%END%][% IF h.permalink %], <a href="[% h.permalink %]">permalink</a>[% END %]
 </div>
 [%END%]
 [%END%]

@@ -177,11 +177,11 @@ sub query
 			while (my $r=$sth->fetchrow_hashref)
 			{
 				print $c csv({encoding=>'utf8'}, map {$r->{$_}} @{$sth->{NAME}}) if $c;
-				push @rows, {map {$_ => $r->{$_}} keys %$r} unless $params->{throw_data};
 				$row_count++;
+				push @rows, {map {$_ => $r->{$_}} keys %$r} if !defined $params->{show_rows} or $params->{show_rows} eq '' or $row_count<=($params->{show_rows}//''||$row_count);
 			}; 
 			$result={header=>[@{$sth->{NAME}}],row_count=>$row_count,error=>$@?$@:db::errstr};
-			$result->{ARRAY}=\@rows unless $params->{throw_data};
+			$result->{ARRAY}=\@rows if !defined $params->{show_rows} or  $params->{show_rows} eq '' or  $params->{show_rows}>0;
 			$result->{csvfile}=$csvfile if $c;
 			close $c if $csvfile;
 		};
