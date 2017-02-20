@@ -49,7 +49,7 @@ sub index :Path :Args
 	my ( $self, $c , $f, @a) = @_;
 	my $p=$c->req->{parameters};
 	my $r;
-	eval {no strict 'refs'; $r=$c->model->$f(@a,$p)};
+	eval {no strict 'refs'; $r=$c->model($p->{model})->$f(@a,$p)};
 	$r={$f=>$r} if ref $r ne 'HASH';
 	%{$c->stash}=(%{stringify_id($r)});
 	$c->forward('wfbase::View::json');

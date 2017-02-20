@@ -50,6 +50,8 @@ $(function()
 
 		};
 	});
+
+	[%IF c.req.parameters.deferral%] setInterval(function(){ $.ajax("/ajapi/deferred/[%c.req.parameters.deferral%]?model=util"); },4*60*1000); [%END%]
 });
 </script>
 <div style="text-align: right; width: 100%">
