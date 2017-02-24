@@ -171,19 +171,20 @@ sub query
 			my @rows;
 			my $csvfile=$params->{csv};
 			$csvfile="$csvfile/$running->{deferral}.csv" if $csvfile and -d $csvfile;
-			open my $c, ">$csvfile" if $csvfile;
-			print $c csv(@{$sth->{NAME}}) if $c;
+			my $c={encoding=>$params->{csvencoding}||"utf8",quote=>$params->{csvquote},delimiter=>$params->{csvdelimiter}} if $csvfile;
+			open $c->{fh}, ">$csvfile" if $csvfile;
+			print {$c->{fh}} csv($c,@{$sth->{NAME}}) if $c;
 			my $row_count=0;
 			while (my $r=$sth->fetchrow_hashref)
 			{
-				print $c csv({encoding=>'utf8'}, map {$r->{$_}} @{$sth->{NAME}}) if $c;
+				print {$c->{fh}} csv($c, map {$r->{$_}} @{$sth->{NAME}}) if $c;
 				$row_count++;
 				push @rows, {map {$_ => $r->{$_}} keys %$r} if !defined $params->{show_rows} or $params->{show_rows} eq '' or $row_count<=($params->{show_rows}//''||$row_count);
 			}; 
 			$result={header=>[@{$sth->{NAME}}],row_count=>$row_count,error=>$@?$@:db::errstr};
 			$result->{ARRAY}=\@rows if !defined $params->{show_rows} or  $params->{show_rows} eq '' or  $params->{show_rows}>0;
 			$result->{csvfile}=$csvfile if $c;
-			close $c if $csvfile;
+			close $c->{fh} if $csvfile;
 		};
 		$result={%$result,(query=>$query,error=>$@?$@:db::errstr)};
 		$sth->finish();
@@ -314,11 +315,13 @@ sub csv($)
 	my @row=@_;
 	use Encode;
 	my $opts=shift @row if ref $row[0] eq 'HASH';
-	s/"/""/g foreach @row;
-	/[;"]/ and $_=qq{"$_"} foreach @row;
+	my $quote=$opts->{quote}||'"';
+	my $delimiter=$opts->{delimiter}||';';
+        s/$quote/$quote$quote/g foreach @row;
+	/[$delimiter$quote]/ and $_=qq{$quote$_$quote} foreach @row;
 	/^[\d\-\.]+$/ and s/\./,/ foreach @row;
 	$_=encode($opts->{encoding}||'cp1251',$_) foreach @row;
-	return sprintf "%s\r\n",join (';',@row);
+	return sprintf "%s\r\n",join ($delimiter,@row);
 }
 
 
