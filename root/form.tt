@@ -6,7 +6,6 @@
 <table>
 [% FOREACH field=form.fields %]
 	[%-IF field.type=='hidden' %][%field.render%][%NEXT%][%END%]
-	[%-IF field.type=="text"%][%field.size=PERL%]print int(1.33*(length($stash->{field}->value())//0)) [%END%][%field.onchange="this.setAttribute('size',this.value.length*1.33);return 1"%][%test%][%END%]
 	<tr>
 	<td style="vertical-align:top">[%field.label%]</td>
 	<td>[%IF field.renderer%][%t="$field.renderer"_".tt"%]
@@ -26,6 +25,14 @@
 [%ELSE%][%#footer%]
 <div style="margin-top:1em;margin-left:2em">
 [% form.submit UNLESS form.submitonchange%]
+[% UNLESS stash.form_js %]
+<script>
+$(function(){
+	$(':text').change(function(){this.setAttribute('size',this.value.length);console.log(this.value.length);return 1;}).trigger('change');
+});
+</script>
+[% stash.form_js="yes" %]
+[% END %][%# form_js%]
 [% IF form.submitonchange%]
 <script>
 $(function(){
