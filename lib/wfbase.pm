@@ -25,6 +25,7 @@ use Catalyst qw/
 	Session::Store::FastMmap
 	Session::State::Cookie
 	Cache
+	+wfbase::Plugin::sloc
 /;
 
 extends 'Catalyst';
