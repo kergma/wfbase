@@ -1,0 +1,40 @@
+[%# vim: set filetype=html: -%]
+[% UNLESS stash.datetime_js %]
+<link rel="stylesheet" href="/s/jquery-ui-timepicker-addon.css" />
+<script type="text/javascript" src="/s/jquery-ui-timepicker-addon.js"></script>
+<script>
+var today,now;
+function formatDate(d)
+{
+	return d.getFullYear()+'-'+(d.getMonth()<9?'0'+(d.getMonth()+1):(d.getMonth()+1))+'-'+(d.getDate()<10?'0'+d.getDate():d.getDate());
+}
+function formatTime(d)
+{
+	return (d.getHours()<10?'0'+d.getHours():d.getHours())+':'+(d.getMinutes()<10?'0'+d.getMinutes():d.getMinutes())+':'+(d.getSeconds()<10?'0'+d.getSeconds():d.getSeconds());
+}
+function set_datetime(e,r)
+{
+	var i=$(e).closest('.datetime');
+	var p=$('.dtpicker',i);
+	var d=new Date();
+	if (r=='yesterday') d.setDate(d.getDate()-1);
+	if (r=='curmonth') d.setDate(1);
+	p.val(formatDate(d));
+	if (r=='now') p.val(((p.hasClass('date') || p.hasClass('datetime'))?formatDate(d)+' ':'')+formatTime(d));
+	if (r=='clear') p.val('');
+	p.trigger('change');
+}
+$(function(){
+	$('.dtpicker.datetime').datetimepicker({dateFormat:'yy-mm-dd'});
+	$('.dtpicker.date').datepicker({dateFormat:'yy-mm-dd'});
+	$('.dtpicker.time').timepicker({dateFormat:'yy-mm-dd'});
+});
+</script>
+[% stash.datetime_js="yes" %]
+[% END %][%# datetime_js%]
+<span class="datetime">
+[%UNLESS f.mode%][%f.mode="datetime"%][%END%]
+[%f.class="dtpicker $f.mode" %][%f.render%]
+[%FOREACH p IN f.presets%] <a href="javascript:" onclick="set_datetime(this,'[%p%]')"> [%c.loc(p)%][%UNLESS p==f.presets.-1%],[%END%]</a>[%END%]
+</span>
+

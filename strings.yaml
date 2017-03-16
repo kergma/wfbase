@@ -1,0 +1,9 @@
+main:
+-
+        - en: clear
+        - ru: очистить
+-
+        - now: en
+        - сейчас: ru
+-       [{today: en},{сегодня: ru}]
+-       [logout, en, выход, ru]
