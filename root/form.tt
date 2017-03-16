@@ -28,7 +28,7 @@
 [% UNLESS stash.form_js %]
 <script>
 $(function(){
-	$(':text').change(function(){this.setAttribute('size',this.value.length);console.log(this.value.length);return 1;}).trigger('change');
+	$(':text').change(function(){this.setAttribute('size',this.value.length);return 1;}).trigger('change');
 });
 </script>
 [% stash.form_js="yes" %]
