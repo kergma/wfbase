@@ -18,7 +18,6 @@ sub setup
 	
 	foreach my $co (keys %$strings)
 	{
-		print "co $co\n";
 		foreach my $te (@{$strings->{$co}})
 		{
 			my @p=map {ref $_ eq 'HASH'?(%$_):$_} @$te;
