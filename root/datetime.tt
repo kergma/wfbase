@@ -18,7 +18,7 @@ function set_datetime(e,r)
 	var p=$('.dtpicker',i);
 	var d=new Date();
 	if (r=='yesterday') d.setDate(d.getDate()-1);
-	if (r=='curmonth') d.setDate(1);
+	if (r=='current month') d.setDate(1);
 	p.val(formatDate(d));
 	if (r=='now') p.val(((p.hasClass('date') || p.hasClass('datetime'))?formatDate(d)+' ':'')+formatTime(d));
 	if (r=='clear') p.val('');

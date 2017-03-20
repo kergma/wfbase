@@ -6,4 +6,6 @@ main:
         - now: en
         - сейчас: ru
 -       [{today: en},{сегодня: ru}]
+-       [yesterday, en, вчера, ru]
+-       ["current month", en, "текущий месяц", ru]
 -       [logout, en, выход, ru]
