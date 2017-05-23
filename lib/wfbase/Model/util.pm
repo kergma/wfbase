@@ -140,7 +140,7 @@ sub main::read_table
 	$sth->finish;
 
 	$result{duration}=time-$start;
-	$result{retrievedf}=$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',time);
+	$result{retrievedf}=$result{retrieved}=time2str('%Y-%m-%d %H:%M:%S',$result{timestamp}=time);
 
 	return \%result;
 }

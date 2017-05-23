@@ -3,7 +3,6 @@
 <link rel="stylesheet" href="/s/jquery-ui-timepicker-addon.css" />
 <script type="text/javascript" src="/s/jquery-ui-timepicker-addon.js"></script>
 <script>
-var today,now;
 function formatDate(d)
 {
 	return d.getFullYear()+'-'+(d.getMonth()<9?'0'+(d.getMonth()+1):(d.getMonth()+1))+'-'+(d.getDate()<10?'0'+d.getDate():d.getDate());
@@ -15,12 +14,22 @@ function formatTime(d)
 function set_datetime(e,r)
 {
 	var i=$(e).closest('.datetime');
+	if (i.length==0) i=$(e).closest('.dtrange');
+
 	var p=$('.dtpicker',i);
 	var d=new Date();
 	if (r=='yesterday') d.setDate(d.getDate()-1);
 	if (r=='current month') d.setDate(1);
 	p.val(formatDate(d));
 	if (r=='now') p.val(((p.hasClass('date') || p.hasClass('datetime'))?formatDate(d)+' ':'')+formatTime(d));
+	if (i.hasClass('dtrange'))
+	{
+		var d2=new Date();
+		var p2=$('.to',i);
+
+		if (r=='today') d2.setDate(d2.getDate()+1);
+		p2.val(formatDate(d2));
+	};
 	if (r=='clear') p.val('');
 	p.trigger('change');
 }
@@ -38,9 +47,17 @@ $(function(){
 </script>
 [% stash.datetime_js="yes" %]
 [% END %][%# datetime_js%]
-<span class="datetime">
 [%UNLESS f.mode%][%f.mode="datetime"%][%END%]
+[%IF f.range %]
+[%xname=f.name%]
+<span class="dtrange">
+<span class="datetime"> [%fname=xname _ "_from" f.name=fname f.class="dtpicker from $f.mode" f.value=c.req.parameters.$fname %] [%c.loc("from")%] [%f.render%] </span>
+<span class="datetime"> [%fname=xname _ "_to" f.name=fname f.class="dtpicker to $f.mode" f.value=c.req.parameters.$fname %] [%c.loc("to")%] [%f.render%] </span>
+[%ELSE%]
+<span class="datetime">
 [%f.class="dtpicker $f.mode" %][%f.render%]
+[%IF f.range%]</span>[%END%]
+[%END%]
 [%FOREACH p IN f.presets%] <a href="javascript:" onclick="set_datetime(this,'[%p%]')"> [%c.loc(p)%][%UNLESS p==f.presets.-1%],[%END%]</a>[%END%]
 </span>
 
