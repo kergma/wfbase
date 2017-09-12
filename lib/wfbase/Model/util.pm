@@ -92,7 +92,12 @@ sub main::cached_array_ref
 	$md5->add($opts->{cache_key}) if defined $opts->{cache_key};
 	use Encode qw(encode_utf8);
 	$md5->add(encode_utf8($q));
-	$md5->add(encode_utf8($_)) foreach @values;
+
+	foreach my $v (@values)
+	{
+		$md5->add(encode_utf8($v)) unless ref $v;
+		$md5->add(encode_utf8(join('',@$v))) if ref $v eq 'ARRAY';
+	};
 	my $qkey=$md5->hexdigest();
 
 	my $result=$cc->cache->get("aref-".$qkey);
