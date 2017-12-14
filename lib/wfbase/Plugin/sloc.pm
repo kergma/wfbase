@@ -33,13 +33,12 @@ sub setup
 			};
 		};
 	};
-	
 }
 sub loc
 {
 	my ($c,$s,$co)=@_;
 	return $index->{$co}{$s}{$c->config->{locale}} || $s if $co;
-	return $_->{$s}{$c->config->{locale}} foreach grep {$_->{$s}{$c->config->{locale}}} values %$index;
+	return $_->{$s}{$c->config->{locale}} foreach grep {$_->{$s}{$c->config->{locale}}} map {$index->{$_}} sort {($b eq 'main') <=> ($a eq 'main') or $a cmp $b} keys %$index;
 	return $s;
 
 }

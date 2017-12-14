@@ -11,3 +11,6 @@ main:
 -       [yesterday, en, вчера, ru]
 -       ["current month", en, "текущий месяц", ru]
 -       [logout, en, выход, ru]
+num:
+-       [from, en, от, ru]
+-       [to, en, до, ru]

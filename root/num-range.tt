@@ -1,0 +1,29 @@
+[%# vim: set filetype=html: -%]
+[% UNLESS stash.numrange_js %]
+<link rel="stylesheet" href="/s/jquery-ui-timepicker-addon.css" />
+<script type="text/javascript" src="/s/jquery-ui-timepicker-addon.js"></script>
+<script>
+function setRange(e,r)
+{
+	var i=$(e).closest('.tri');
+	var f=$('.from',i);
+	var t=$('.to',i);
+	if (r=='clear')
+	{
+		console.log(f,t);
+		f.val('');
+		t.val('');
+	};
+}
+$(function(){
+	$('.dtpicker').datetimepicker({dateFormat:'yy-mm-dd'});
+});
+</script>
+[% stash.numrange_js="yes" %]
+[% END %][%# numrange_js%]
+[%xname=f.name%]
+<span class="tri">
+[%fname=xname _ "_from" f.class="from" f.name=fname f.value=c.req.parameters.$fname %] [%c.loc("from","num")%] [%f.render%] 
+[%fname=xname _ "_to" f.class="to" f.name=fname f.value=c.req.parameters.$fname %] [%c.loc("to","num")%] [%f.render%] 
+<a href="javascript:" onclick="setRange(this,'clear')">[%c.loc("clear")%]</a>
+</span>
