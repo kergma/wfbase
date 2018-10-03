@@ -104,7 +104,7 @@ sub auto :Private
 
 	if (!$c->user_exists and $c->controller eq $c->controller('ajapi') and $c->request->parameters->{username})
 	{
-		print "authenticated\n" if $c->authenticate({username=>$c->request->parameters->{username},password=>$c->request->parameters->{password}});
+		$c->authenticate({username=>$c->request->parameters->{username},password=>$c->request->parameters->{password}});
 	};
 
 	if (!$c->user_exists and $c->controller eq $c->controller('ajapi'))
