@@ -62,7 +62,8 @@ $(function()
 <div id="menu-start"></div>
 <div style="z-index:1010" id="menu-bar"><!-- main-menu -->
 <div id="auth">
-<div id="login-name" title="[% IF c.user.full_name %][% c.user.full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
+[%PERL%]use HTML::Entities;$stash->{full_name}=encode_entities($stash->{c}->user->{full_name},q|<>>"&|);[%END%]
+<div id="login-name" title="[% IF c.user.full_name %][% full_name %][% END %][% IF c.user.roles %], &#10;[% c.user.roles.join(', ') %][% END %], &#10; [% c.user.spname.join('; ') %]">[% c.user.username %] </div>
 <div id="logout"><a href="[%c.request.env.HTTP_X_SITE_ROOT%]/auth/logout">[%c.config.auth_strings.logout_anchor%]</a></div>
 </div>
 <ul id="main-menu">
