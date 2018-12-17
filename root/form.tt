@@ -27,8 +27,12 @@
 [% form.submit UNLESS form.submitonchange%]
 [% UNLESS stash.form_js %]
 <script>
-$(function(){
+function init_form_controls()
+{
 	$(':text').change(function(){this.setAttribute('size',this.value.length);return 1;}).trigger('change');
+}
+$(function(){
+	init_form_controls();
 });
 </script>
 [% stash.form_js="yes" %]
