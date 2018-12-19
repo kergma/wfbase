@@ -102,10 +102,8 @@ sub auto :Private
 		$c->authenticate({uid=>$uid,password=>'***'}) if $uid;
 	};
 
-	if (!$c->user_exists and $c->controller eq $c->controller('ajapi') and $c->request->parameters->{username})
-	{
-		$c->authenticate({username=>$c->request->parameters->{username},password=>$c->request->parameters->{password}});
-	};
+	$c->authenticate({username=>$c->request->parameters->{username},password=>$c->request->parameters->{password}}) if !$c->user_exists and $c->controller eq $c->controller('ajapi') and $c->request->parameters->{username};
+	$c->authenticate({apikey=> $c->request->parameters->{apikey},password=>'ok'}) if !$c->user_exists and $c->request->parameters->{apikey};
 
 	if (!$c->user_exists and $c->controller eq $c->controller('ajapi'))
 	{
