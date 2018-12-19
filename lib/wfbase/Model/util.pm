@@ -252,8 +252,8 @@ sub defer
 	if ($child)
 	{
 		$cache->set("rkey-$rkey",$running,0);
-		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action}},0);
-		while ((time-$start)<($params->{defer_threshold}||5) and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
+		$cache->set("defr-$deferral",{rkey=>$rkey,deferral=>$deferral,params=>$params,user=>$cc->user && $cc->user->{souid},action=>$cc->req->{action}},0);
+		while ((time-$start)<($params->{defer_threshold}//5) and (my $c=waitpid($child,WNOHANG))>=0) {usleep(100)};
 		return {deferral=>$deferral};
 	};
 	if ($params->{need_db}//1)
@@ -264,7 +264,10 @@ sub defer
 	
 	$cache->set("rkey-$rkey",$running,0);
 
-	my @r=&$proc(@values,$running);
+	my @r;
+	eval {@r=&$proc(@values,$running);};
+	(print("defer error $@\n"),return {error=>"defer error: $@"}) if $@;
+
 	my $result=shift @r if scalar(@r)==1;
 	$result=\@r unless defined $result;
 
@@ -272,7 +275,7 @@ sub defer
 	$result={'SCALAR'=>$result} unless ref $result;
 	$result->{rkey}=$rkey;
 	
-	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params,user=>$cc->user->{souid},action=>$cc->req->{action})};
+	$result={%$result,(values=>[@values],duration=>time-$start,completed=>time,completedf=>time2str('%Y-%m-%d %H:%M:%S',time),deferral=>$deferral,params=>$params,user=>$cc->user && $cc->user->{souid},action=>$cc->req->{action})};
 	$cache->remove("rkey-$rkey");
 	if (scalar(@{$result->{ARRAY}//[]})*scalar(@{$result->{header}//[]})>30 or !$cache->set("defr-$deferral",$result))
 	{
