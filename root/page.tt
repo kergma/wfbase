@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/s/common.css" />
 <link rel="stylesheet" href="/s/jquery-ui-1.12.1/jquery-ui.min.css" />
 <link rel="stylesheet" href="/s/bootstrap.min.css" />
+<link rel="stylesheet" href="/s/css/all.css" />
 <script type="text/javascript" src="/s/jquery-3.3.1.min.js"></script>
 <script src="/s/jquery-ui-1.12.1/jquery-ui.min.js"> </script>
 <script src="/s/bootstrap.min.js"> </script>
