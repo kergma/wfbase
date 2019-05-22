@@ -29,7 +29,7 @@
 	[% IF value.display.order %][% keys=value.display.order %][% END %]
 
 [%# рендеринг %]
-<div class="container [% node.type %] [%node.key.replace('\s+','-')%]">[% queue.unshift({footer=>node}) %]
+<div class="sw-container [% node.type %] [%node.key.replace('\s+','-')%]">[% queue.unshift({footer=>node}) %]
 	[% INCLUDE noder.tt n=node%]
 	[% IF node.stop%][%NEXT%][%END ~%]
 
