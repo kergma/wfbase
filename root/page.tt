@@ -2,6 +2,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <meta http-equiv="cache-control" content="no-cache">
 <title>[%pagetitle%][%pagetitle and systitle and " - "%][%systitle%]</title>
@@ -63,6 +65,7 @@ $(function()
 </div>
 </div>
 <div id="menu-start"></div>
+[%IF c.user%]
 <div style="z-index:1010" id="menu-bar"><!-- main-menu -->
 <div id="auth">
 [%PERL%]use HTML::Entities;$stash->{full_name}=encode_entities($stash->{c}->user->{full_name},q|<>>"&|);[%END%]
@@ -83,6 +86,7 @@ $(function()
 [%END%][%#mm%]
 </ul>
 </div> <!-- end menu -->
+[%END%][%# c.user%]
 <div id="header">
     [%# Insert the page title -%]
     <!--<h1>[% template.title or site.title %]</h1>-->

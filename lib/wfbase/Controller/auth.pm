@@ -32,6 +32,7 @@ sub index :Path :Args(0) {
 sub login :Local :Form
 {
 	my ( $self, $c ) = @_;
+	$c->stash->{display}->{order}=[qw/formbuilder error status/];
 	my $form=$self->formbuilder;
 
 	$form->field(name => 'username', label=>$c->config->{auth_strings}->{username_prompt}||'Имя входа');
@@ -41,7 +42,6 @@ sub login :Local :Form
 	$form->action('');
 
 	my $env=$c->request->{env};
-	my $body=$form->render();
 	my $error="";
 	if ( $form->submitted ) {
 		if ($c->authenticate($c->req->parameters))
@@ -58,7 +58,7 @@ sub login :Local :Form
 		}
 		else
 		{
-			$error.=$c->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
+			$error=$c->config->{auth_strings}->{error}||"Неправильно введено имя входа или пароль<br>Попробуйте еще раз<br>Регистр букв учитывается и в имени и в пароле";
 		};
 	};
 	if ($env->{HTTP_X_VERIFIED} eq 'SUCCESS')
@@ -67,17 +67,16 @@ sub login :Local :Form
 		$uid=$1 if $env->{HTTP_X_CLIENT_S_DN} =~ /UID=([a-f0-9\-]{36})/i;
 		my $user;
 		$user=$c->model->authinfo_data({uid=>$uid}) if $uid;
-		$body.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
+		$c->stash->{status}->{text}.=qq\<p>Продолжить как <a href="/">$user->{username}</a></p>\ if $user;
 	};
 	if ($c->user_exists and !$c->check_any_user_role($c->config->{login_role}))
 	{
-		$error.=sprintf $c->config->{auth_strings}->{forbidden}||"нет разрешения на вход для сотрудника %s",$c->user->{full_name}||$c->user->{username};
+		$error=sprintf $c->config->{auth_strings}->{forbidden}||"нет разрешения на вход для сотрудника %s",$c->user->{full_name}||$c->user->{username};
 		$c->logout;
 	};
 
-	$body.=$c->stash->{error}=$error if $error;
+	$c->stash->{error}=$error if $error;
 	$c->forward('wfbase::View::json') and return 1 if $env->{HTTP_ACCEPT}=~'application/json';
-	$c->response->body($body);
 }
 
 sub logout :Local

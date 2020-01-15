@@ -81,7 +81,7 @@ __PACKAGE__->config->{'Plugin::ConfigLoader'} = {
 };
 
 __PACKAGE__->config(
-	'Plugin::Static::Simple' => { include_path => $roots },
+	'Plugin::Static::Simple' => { dirs=>['s'],include_path => $roots },
 );
 
 __PACKAGE__->config->{'Plugin::Authentication'} =
