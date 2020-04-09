@@ -1,6 +1,7 @@
 [%# vim: set filetype=tt2: -%]
 [%UNLESS footer%]
 [%- form.script %]
+[% form.onsubmit="var v=\$(':input[name=_submit]',this).val();\$(':input[type=submit]',this).prop('disabled',true);\$(this).append(\$('<input type=\"hidden\" name=\"_submit\">').val(v));return true;" %]
 [%- form.start %]
 [%- form.statetags %]
 <table>
