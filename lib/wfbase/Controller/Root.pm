@@ -112,7 +112,7 @@ sub auto :Private
 		$c->forward('wfbase::View::json');
 		return 0;
 	};
-	return 1 if grep {my $l=$_; grep {$l eq $_} @{$c->config->{public_pages}}} ($c->action->{reverse},$c->request->{env}->{PATH_INFO});
+	return 1 if grep {my $l=$_; grep {m|$l|} ($c->action->{reverse},$c->request->{env}->{PATH_INFO})} @{$c->config->{public_pages}};
 
 	eval{$c->model->update_user($c)};
 	if (!$c->user_exists)
