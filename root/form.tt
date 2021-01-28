@@ -1,7 +1,7 @@
 [%# vim: set filetype=tt2: -%]
 [%UNLESS footer%]
 [%- form.script %]
-[% form.onsubmit="var v=\$(':input[name=_submit]',this).val();\$(':input[type=submit]',this).prop('disabled',true);\$(this).append(\$('<input type=\"hidden\" name=\"_submit\">').val(v));return true;" %]
+[% form.onsubmit="\$(':input[type=submit]',this).prop('disabled',true);\$(this).append(\$('<input type=\"hidden\" name=\"_submit\">').val(this.submit_value));return true;" %]
 [%- form.start %]
 [%- form.statetags %]
 <table>
@@ -49,4 +49,5 @@ $(function(){
 [%END%]
 </div>
 [% form.end %]
+<script>$('input[type=submit]',$('form').last()).click(e=>{e.target.form.submit_value=e.target.value;});</script>
 [%END%]
